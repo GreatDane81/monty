@@ -172,12 +172,14 @@ def update_index(board, row, col, piece):
     # next, find the shift using PIECE_TO_SHIFT
     board[row, col, PIECE_TO_BARRAY[piece]] = 1
 
+
+
 file_path = 'C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/kasparov-deep-blue-1997.pgn'
 file = open(file_path)
 
 board = initialize_np_board()
 
-#board_tensor = get_board_tensor(board)
+board_tensor = get_board_tensor(board)
 
 #print(board_to_str(board))
 
@@ -186,15 +188,27 @@ first_game = chess.pgn.read_game(file)
 #print(first_game.headers["Event"])
 
 print(board_to_str(board))
+file_obj = open("C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/board_debug.txt","w")
 
 for move in first_game.mainline_moves():
-    print(move)
-    play_move(board, move)
-    print(board_to_str(board))
-    break
+   try:
+        file_obj.writelines(str(move) +"\n")
+        play_move(board, move)
+        file_obj.writelines(board_to_str(board))
+        file_obj.writelines("\n\n")
+    except:
+       print("failed out")
+       break
 
-print(get_piece_from_index(2,5))
-print(get_piece_from_index(0,3))
+file_obj.close()
+
+
+#play_move(board, 'd7d5') # also works after g1f3
+#print(board_to_str(board)) 
+
+#print(get_piece_from_index(2,5)) n g1 to f3 working as expected
+#print(get_piece_from_index(0,3))
+
 file.close()
 print('done')
 
