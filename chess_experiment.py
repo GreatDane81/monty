@@ -21,6 +21,8 @@ BLACK_CASTLE_BIT = 1 # [8, 2, 0]
 # n for knight for disambuity, I'm sorry
 PIECE_OFFSET = {'p':1, 'n':2, 'b':3, 'r':4, 'q':5, 'k':6} # offset of 1 for pawn because of empty bit
 PIECE_TO_CHAR = {1:'p', 2:'n', 3:'b', 4:'r', 5:'q', 6:'k',7:'P', 8:'N', 9:'B', 10:'R', 11:'Q', 12:'K'}
+LETTER_TO_ROW = {'a':0, 'b':1, 'c':2, 'd':3, 'e':4,'f':5, 'g':6,'h':7}
+PIECE_TO_BARRAY = {'p':1, 'n':2, 'b':3, 'r':4, 'q':5, 'k':6,'P':7, 'N':8, 'B':9, 'R':10, 'Q':11, 'K':12}
 
 def initialize_np_board():
     '''
@@ -49,16 +51,20 @@ def set_back_rank(board, colour):
     if colour == 'w':
         colour_offset = 0
         row = 0
+        # Do king and queen separately
+        board[row, 3, PIECE_OFFSET['q'] + 6*colour_offset] = 1
+        board[row, 4, PIECE_OFFSET['k'] + 6*colour_offset] = 1
     else:
         colour_offset = 1
         row = 7
+        board[row, 3, PIECE_OFFSET['k'] + 6*colour_offset] = 1
+        board[row, 4, PIECE_OFFSET['q'] + 6*colour_offset] = 1
     # Take the first piece in the row, the rook, and find its index.
     # if the colour is black, shift 6 down and set the correct bit to 1
     board[row, 0, PIECE_OFFSET['r'] + 6*colour_offset] = 1
     board[row, 1, PIECE_OFFSET['n'] + 6*colour_offset] = 1
     board[row, 2, PIECE_OFFSET['b'] + 6*colour_offset] = 1
-    board[row, 3, PIECE_OFFSET['q'] + 6*colour_offset] = 1
-    board[row, 4, PIECE_OFFSET['k'] + 6*colour_offset] = 1
+    # did the middle rows above
     board[row, 5, PIECE_OFFSET['b'] + 6*colour_offset] = 1
     board[row, 6, PIECE_OFFSET['n'] + 6*colour_offset] = 1
     board[row, 7, PIECE_OFFSET['r'] + 6*colour_offset] = 1
@@ -71,38 +77,124 @@ def board_to_str(board):
     #black_k_has_moved = board[8, 2, 0] & True
     #turn = board[8, 0, 0] & True
     s = ""
-    for i in range(7, -1, -1): # kind of weird, but range is not inclusive
-        for j in range(7, 0, -1):
-            if board[i, j, 0] == 0: # Then square is empty, add a '.'
-                s += '.'
-            else:
-                # get the piece
-                for k in range (1,13): 
-                    if board[i, j, k] == 1:
-                        # found the piece
-                        s += PIECE_TO_CHAR[k]
-        s += "\n" # newline
+    for row in range(0, 8):
+        s = row_to_str(row) + "\n" + s
     return s
 
+def row_to_str(row_num):
+    s = ""
+    for col in range(0, 8):
+        if board[row_num, col, 0] == 0:
+            s += "."
+        else:
+            s += get_piece_from_index(row_num, col)
+    return s
+
+
+def get_board_tensor(board):
+    '''
+    Numpy Board --> Constant tensor of the board
+    '''
+    return tf.constant(board, dtype=tf.uint8)
+
+def play_move(board, move):
+    '''
+    (Numpy, str) -> Numpy
+    Takes a Numpy board, updates it given a move from move in game.mainline_moves()
+    '''
+    # TODO: Take care of special cases like promotion, castling, and maybe en passant.
+    # first, parse the move string
+    # TODO: This includes updating the bit map for castling.
+    indices = parse_move_indices(move)
+    start_index = indices[0]
+    target_index = indices[1]
+    # get the piece from the start index
+    piece = get_piece_from_index(start_index[0], start_index[1])
+    # next, empty the index from the start index
+    empty_index(board, start_index[0], start_index[1])
+    # then, update the target index
+    update_index(board, target_index[0], target_index[1], piece)
+    # And switch player turns
+    board[8,0,0] = 1 - board[8,0,0]
+
+def parse_move_indices(move):
+    '''
+    returns the index for start piece, target piece
+    --> [(s_row, s_col), (t_row, t_col)]
+    '''
+    move_str = str(move)
+    if len(move_str) == 4:
+        # Then we have a standard square to square move
+        start_sq = move_str[0:2]
+        target_sq = move_str[2:4]
+        # g1 should be 0, 6
+        start_index = (int(start_sq[1]) - 1, LETTER_TO_ROW[start_sq[0]])
+        target_index = (int(target_sq[1]) -1, LETTER_TO_ROW[target_sq[0]])
+        return [start_index, target_index]
+        
+
+def get_piece_from_index(row, col):
+    '''
+    (row, col) -> str
+
+    A1 -> 0, 0
+    '''
+    barray = board[row, col]
+    return get_piece_from_bit_array(barray)
+
+def get_piece_from_bit_array(barray):
+    '''
+    bit array for pieces --> piece rep in str
+    '''
+    if barray[0] == 0:
+        return None # TODO: error
+    for k in range (1,13): 
+        if barray[k] == 1:
+            # found the piece
+            return PIECE_TO_CHAR[k]
+
+def empty_index(board, row, col):
+    '''
+    Empties the square at [row, col].
+    Intended for pieces only, don't apply to row 9.
+    '''
+    # set the bit array to 0 (selection bit will be empty, as will all pieces)
+    board[row,col] = np.zeros(PIECES)
+    return
+
+def update_index(board, row, col, piece):
+    '''
+    Writes over the square at row, col, with 'piece'.
+    Note: Old piece is wiped, this accounts for captures.
+    '''
+    # first, set the bit map to contain a piece
+    board[row, col, 0] = 1
+    # next, find the shift using PIECE_TO_SHIFT
+    board[row, col, PIECE_TO_BARRAY[piece]] = 1
 
 file_path = 'C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/kasparov-deep-blue-1997.pgn'
 file = open(file_path)
 
 board = initialize_np_board()
 
-print(board_to_str(board))
+#board_tensor = get_board_tensor(board)
+
+#print(board_to_str(board))
 
 
 first_game = chess.pgn.read_game(file)
-print(first_game.headers["Event"])
+#print(first_game.headers["Event"])
 
+print(board_to_str(board))
 
-board = first_game.board()
 for move in first_game.mainline_moves():
-    #print(move) # perfect, i don't even have to parse. Well, kind of.
-    # have to only interpret squares to the tensor.
-    pass
+    print(move)
+    play_move(board, move)
+    print(board_to_str(board))
+    break
 
+print(get_piece_from_index(2,5))
+print(get_piece_from_index(0,3))
 file.close()
 print('done')
 
