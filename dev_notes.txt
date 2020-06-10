@@ -1,0 +1,17 @@
+- Tried an OOP approach to building the board. Seems awkard, so I'm going to use Numpy instead, and modify the board as the game goes along.
+
+- Will probably need some parsing on get_moves, probably to handle pawn promotion, checkmate, etc. Just play with it and figure out what needs to be done.
+
+Training portion TODO:
+
+- Build the Numpy representation of the board, which will be modified after every move. Each move should be fed into a constant Tensor and stored along with the actual stockfish evaluation for training examples.
+	* It's not clear if I should serialize the training set, or 		  if I should elect to chose some other approach 
+	  to store the Tensor.
+
+- How do I store the model after it's been trained? I want the code to be portable without having to retrain. 
+
+AI portion TODO:
+
+- Figure out depth of Min/Max algorithm
+
+- Building the decision tree will be difficult given that I want level searching to be O(n). I'm thinking of a tree where each level is a linked list, so you can keep an array of the start node for each level and find the min/max that way instead of traversing up and across a bunch of levels. Lots of room to screw that up, though.
