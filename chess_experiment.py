@@ -287,13 +287,22 @@ for move in first_game.mainline_moves():
     try:
         # detection of white kingside castle
         move_str = str(move)
-        if white_can_castle(board) and move_str == 'e1g1':
+        if white_can_castle(board) and (move_str == 'e1g1' or move_str=='e1c1'):
             # Then king is castling. Error handling:
-            castle_king_side(board, 'w')
-            file_obj.writelines(str(move) +" white k side castle \n")
-        elif black_can_castle(board) and move_str == 'e8g8':
-            castle_king_side(board, 'b')
-            file_obj.writelines(str(move) +" black k side castle \n")
+            if move_str == 'e1g1': # yes, I know i check twice. Live with it.
+                castle_king_side(board, 'w')
+                file_obj.writelines(str(move) +" white k side castle \n")
+            else:
+                castle_queen_side(board, 'w')
+                file_obj.writelines(str(move) +" white Q side castle \n")
+        elif black_can_castle(board) and (move_str == 'e8g8' or move_str=='e8c8'):
+            if move_str == 'e8g8':
+                castle_king_side(board, 'b')
+                file_obj.writelines(str(move) +" black k side castle \n")
+            else:
+                castle_queen_side(board, 'b')
+                file_obj.writelines(str(move) +" black Q side castle \n")
+            
         else:
             play_move(board, move, move.promotion)
             file_obj.writelines(str(move) +"\n")
