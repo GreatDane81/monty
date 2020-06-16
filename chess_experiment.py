@@ -97,7 +97,7 @@ def get_board_tensor(board):
     '''
     return tf.constant(board, dtype=tf.uint8)
 
-def play_move(board, move):
+def play_move(board, move, promotion):
     '''
     (Numpy, str) -> Numpy
     Takes a Numpy board, updates it given a move from move in game.mainline_moves()
@@ -113,6 +113,9 @@ def play_move(board, move):
     # next, empty the index from the start index
     empty_index(board, start_index[0], start_index[1])
     # then, update the target index
+    if promotion != None:
+        # Then get the promotion piece
+        piece = PIECE_TO_CHAR[promotion]
     update_index(board, target_index[0], target_index[1], piece)
     # And switch player turns
     update_turn(board)
@@ -121,16 +124,15 @@ def parse_move_indices(move):
     '''
     returns the index for start piece, target piece
     --> [(s_row, s_col), (t_row, t_col)]
+    NOTE: only takes the first chars for the indices, promotions and mate not considered
     '''
     move_str = str(move)
-    if len(move_str) == 4:
-        # Then we have a standard square to square move
-        start_sq = move_str[0:2]
-        target_sq = move_str[2:4]
-        # g1 should be 0, 6
-        start_index = (int(start_sq[1]) - 1, LETTER_TO_ROW[start_sq[0]])
-        target_index = (int(target_sq[1]) -1, LETTER_TO_ROW[target_sq[0]])
-        return [start_index, target_index]
+    start_sq = move_str[0:2]
+    target_sq = move_str[2:4]
+    # g1 should be 0, 6
+    start_index = (int(start_sq[1]) - 1, LETTER_TO_ROW[start_sq[0]])
+    target_index = (int(target_sq[1]) -1, LETTER_TO_ROW[target_sq[0]])
+    return [start_index, target_index]
         
 
 def get_piece_from_index(board, row, col):
@@ -264,7 +266,8 @@ def castle_update(board, king):
         board[8,2,0] = 0
 
 
-file_path = 'C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/kasparov-deep-blue-1997.pgn'
+#file_path = 'C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/kasparov-deep-blue-1997.pgn'
+file_path = 'C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/promotion.pgn'
 file = open(file_path)
 
 board = initialize_np_board()
@@ -275,7 +278,7 @@ board_tensor = get_board_tensor(board)
 
 
 first_game = chess.pgn.read_game(file)
-#print(first_game.headers["Event"])
+print(first_game.headers["Event"])
 
 print(board_to_str(board))
 file_obj = open("C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/board_debug.txt","w")
@@ -292,14 +295,13 @@ for move in first_game.mainline_moves():
             castle_king_side(board, 'b')
             file_obj.writelines(str(move) +" black k side castle \n")
         else:
-            play_move(board, move)
+            play_move(board, move, move.promotion)
             file_obj.writelines(str(move) +"\n")
         file_obj.writelines(board_to_str(board))
         file_obj.writelines("\n\n")
     except:
         print("failed out")
         break
-
 file_obj.close()
 
 
