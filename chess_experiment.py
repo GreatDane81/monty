@@ -57,8 +57,8 @@ def set_back_rank(board, colour):
     else:
         colour_offset = 1
         row = 7
-        board[row, 3, PIECE_OFFSET['k'] + 6*colour_offset] = 1
-        board[row, 4, PIECE_OFFSET['q'] + 6*colour_offset] = 1
+        board[row, 3, PIECE_OFFSET['q'] + 6*colour_offset] = 1
+        board[row, 4, PIECE_OFFSET['k'] + 6*colour_offset] = 1
     # Take the first piece in the row, the rook, and find its index.
     # if the colour is black, shift 6 down and set the correct bit to 1
     board[row, 0, PIECE_OFFSET['r'] + 6*colour_offset] = 1
@@ -87,7 +87,7 @@ def row_to_str(row_num):
         if board[row_num, col, 0] == 0:
             s += "."
         else:
-            s += get_piece_from_index(row_num, col)
+            s += get_piece_from_index(board, row_num, col)
     return s
 
 
@@ -109,13 +109,13 @@ def play_move(board, move):
     start_index = indices[0]
     target_index = indices[1]
     # get the piece from the start index
-    piece = get_piece_from_index(start_index[0], start_index[1])
+    piece = get_piece_from_index(board, start_index[0], start_index[1])
     # next, empty the index from the start index
     empty_index(board, start_index[0], start_index[1])
     # then, update the target index
     update_index(board, target_index[0], target_index[1], piece)
     # And switch player turns
-    board[8,0,0] = 1 - board[8,0,0]
+    update_turn(board)
 
 def parse_move_indices(move):
     '''
@@ -133,16 +133,17 @@ def parse_move_indices(move):
         return [start_index, target_index]
         
 
-def get_piece_from_index(row, col):
+def get_piece_from_index(board, row, col):
     '''
     (row, col) -> str
 
     A1 -> 0, 0
+    TODO: Clean up this code, board should be an argument
     '''
     barray = board[row, col]
-    return get_piece_from_bit_array(barray)
+    return get_piece_from_bit_array(board, barray)
 
-def get_piece_from_bit_array(barray):
+def get_piece_from_bit_array(board, barray):
     '''
     bit array for pieces --> piece rep in str
     '''
@@ -167,11 +168,100 @@ def update_index(board, row, col, piece):
     Writes over the square at row, col, with 'piece'.
     Note: Old piece is wiped, this accounts for captures.
     '''
+    # Empty the board's pieces before updating
+    board[row, col] = np.zeros(PIECES)
     # first, set the bit map to contain a piece
     board[row, col, 0] = 1
     # next, find the shift using PIECE_TO_SHIFT
     board[row, col, PIECE_TO_BARRAY[piece]] = 1
 
+def castle_king_side(board, colour):
+    '''
+    Castles kingside given a colour. Returns None on failure
+    TODO: Proper exception, optimize if else branching
+    Again a big assumption here is that this move is LEGAL to play
+    '''
+    if colour == 'w':
+        # First, check that the king and  kingside rook are in the right place
+        king_index = parse_index('e1')
+        rook_index = parse_index('h1')
+        king_target = parse_index('g1')
+        rook_target = parse_index('f1')
+        king_char = 'k'
+        rook_char = 'r'
+    else:
+        king_index = parse_index('e8')
+        rook_index = parse_index('h8')
+        king_target = parse_index('g8')
+        rook_target = parse_index('f8')
+        king_char = 'K'
+        rook_char = 'R'
+    castling_logic(board, king_index, rook_index, king_target, rook_target, king_char, rook_char)
+    
+
+def castle_queen_side(board, colour):
+    '''
+    Castles queenside according to colour
+    '''
+    if colour == 'w':
+        king_index = parse_index('e1')
+        rook_index = parse_index('a1')
+        king_target = parse_index('c1')
+        rook_target = parse_index('d1')
+        king_char = 'k'
+        rook_char = 'r'
+    else:
+        king_index = parse_index('e8')
+        rook_index = parse_index('a8')
+        king_target = parse_index('c8')
+        rook_target = parse_index('d8')
+        king_char = 'K'
+        rook_char = 'R'
+    castling_logic(board, king_index, rook_index, king_target, rook_target, king_char, rook_char)
+
+def castling_logic(board, king_index, rook_index, king_target, rook_target, king_char, rook_char):
+    '''
+    Castling logic that will be called on all castles: white/black kingside, white/black queenside.
+    '''
+    king_correct = get_piece_from_index(board, king_index[0], king_index[1]) == king_char
+    if not king_correct:
+       return None # TODO: fail out
+    rook_correct = get_piece_from_index(board, rook_index[0], rook_index[1]) == rook_char
+    if not rook_correct:
+        return None
+    # Passed error handling, update the pieces
+    empty_index(board, king_index[0], king_index[1])
+    empty_index(board, rook_index[0], rook_index[1])
+    # update the pieces
+    update_index(board, king_target[0], king_target[1], king_char)
+    update_index(board, rook_target[0], rook_target[1], rook_char)
+    update_turn(board)
+    # update castling bit
+    castle_update(board, king_char)
+
+
+def parse_index(index):
+    '''
+    "a1" --> (0, 0)
+    TODO: update to use in other functions that need it
+    '''
+    # TODO: Assert length = 2
+    return (int(index[1]) - 1, LETTER_TO_ROW[index[0]])
+
+def update_turn(board):
+    board[8,0,0] = 1 - board[8,0,0]
+
+def white_can_castle(board):
+    return board[8, 1, 0] == 1
+
+def black_can_castle(board):
+    return board[8,2,0] == 1
+
+def castle_update(board, king):
+    if king == 'k':
+        board[8,1, 0] = 0
+    else:
+        board[8,2,0] = 0
 
 
 file_path = 'C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/kasparov-deep-blue-1997.pgn'
@@ -191,14 +281,24 @@ print(board_to_str(board))
 file_obj = open("C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/board_debug.txt","w")
 
 for move in first_game.mainline_moves():
-   try:
-        file_obj.writelines(str(move) +"\n")
-        play_move(board, move)
+    try:
+        # detection of white kingside castle
+        move_str = str(move)
+        if white_can_castle(board) and move_str == 'e1g1':
+            # Then king is castling. Error handling:
+            castle_king_side(board, 'w')
+            file_obj.writelines(str(move) +" white k side castle \n")
+        elif black_can_castle(board) and move_str == 'e8g8':
+            castle_king_side(board, 'b')
+            file_obj.writelines(str(move) +" black k side castle \n")
+        else:
+            play_move(board, move)
+            file_obj.writelines(str(move) +"\n")
         file_obj.writelines(board_to_str(board))
         file_obj.writelines("\n\n")
     except:
-       print("failed out")
-       break
+        print("failed out")
+        break
 
 file_obj.close()
 
