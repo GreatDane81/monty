@@ -9,14 +9,9 @@ import copy
 
 import chess.engine
 
-import io
-
-import admin
-if not admin.isUserAdmin():
-        admin.runAsAdmin()
 
 SF_DEPTH = 10 # depth for stockfish
-engine = chess.engine.SimpleEngine.popen_uci("c:/users/ethan dain/appdata/local/programs/python/python37/lib/site-packages/stockfish")
+engine = chess.engine.SimpleEngine.popen_uci("C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/lc0.exe")
 
 class MoveNode:
 
@@ -73,7 +68,7 @@ class MoveSelector:
 board = chess.Board()
 root = MoveNode(board, 0, 0)
 
-root.build_structure(7) # Yea man i mean this memory useage will be pretty heavy but i don't see
+root.build_structure(1) # Yea man i mean this memory useage will be pretty heavy but i don't see
 # a work around.
 
 print(root.board)
@@ -90,4 +85,3 @@ board = first_game.board()
 #for move in first_game.mainline_moves():
 #    board.push(move)
 #    print(board.legal_moves)
-input("enter to close")

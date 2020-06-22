@@ -1,0 +1,13 @@
+Problems:
+
+Testing is going to be weird. The board doesn't lend itself well to being printed, and I need a way to automate comparison of my representation of the board to the actual board itself.
+
+I'm going to run into problems when I castle Queen side, when I promote, and so on.
+
+The best way to make this comparison will be either turning my representation of the board into a board and comparing them, or turning both into strings (i already have my board -> string) and comparing the equality.
+
+I wonder what other bits I will have to use that actually make a difference in the stockfish analysis. I absolutely need two castling bits, but outside of that it seems like all the legality of moves is handled by the pychess, not me. 
+
+Progress was made. I'm further than i thought i would be after today.
+
+The first move my AI ever played was knight g1 to f3.
