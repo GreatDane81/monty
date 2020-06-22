@@ -11,7 +11,6 @@ import chess.engine
 
 
 SF_DEPTH = 10 # depth for stockfish
-engine = chess.engine.SimpleEngine.popen_uci("C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/lc0.exe")
 
 class MoveNode:
 
