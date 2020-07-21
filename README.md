@@ -1,4 +1,4 @@
-# Monty
+# Monty - In Memoriam: 1 Decemeber 2007 - 1 July 2020. Best Dog.
 
 ## An ML chess AI using Keras
 
