@@ -15,3 +15,9 @@ AI portion TODO:
 - Figure out depth of Min/Max algorithm
 
 - Building the decision tree will be difficult given that I want level searching to be O(n). I'm thinking of a tree where each level is a linked list, so you can keep an array of the start node for each level and find the min/max that way instead of traversing up and across a bunch of levels. Lots of room to screw that up, though.
+
+Update on AI portion:
+
+- Going to abondon tree idea. Slow, and uses a ton of computation that Stockfish is already doing. Will just do a straight linear regression on Stockfish evaluation. 
+
+- Going to still rely on Stockfish for the mating nets, because it's just a pain to program them. Why do the work that's already done for me? Besides, it's not the point. 

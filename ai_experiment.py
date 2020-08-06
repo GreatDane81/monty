@@ -47,8 +47,18 @@ class MoveNode:
             #print(new_board)
             #print("\n\n")
             self.board.pop() # man this will get real bad for memory, not even sure this is viable
-            new_node = MoveNode(new_board, player = self.player, depth = depth - 1, move = move)
+            new_node = MoveNode(new_board, player = 1 - self.player, depth = depth - 1, move = move)
             self.children.append(new_node)
+    
+    def __str__(self):
+        '''
+        printing because debug is slow
+        '''
+        # print layer by layer:
+        s = "\ndepth = " +  (str)(self.depth) +  ", move = " +  (str)(self.move) + ", player = " + (str)(self.player)
+        for child in self.children:
+            s += child.__str__()
+        return s
     
 class MoveSelector:
     # ohboy.jpg is the memory going to be dog

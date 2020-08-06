@@ -11,6 +11,9 @@ board = chess.Board()
 while not board.is_game_over():
     result = engine.play(board, chess.engine.Limit(time=0.1))
     board.push(result.move)
+    info = engine.analyse(board, chess.engine.Limit(time=0.1))
+    print(board)
+    print("Score:", info["score"])
 
 engine.quit()
 # this works 
