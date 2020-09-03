@@ -26,7 +26,7 @@ class Board:
         '''
         Creates a new board with standard starting position
         '''
-        self.board = np.zeros([ROWS, COLUMNS, PIECES],dtype='uint8')
+        self.board = np.zeros([ROWS, COLUMNS, PIECES],dtype='float32')
         self.board[0:2, :, 0] = 1 # filling the first two rows with "full" bits (represents white)
         self.board[6:8, :, 0] = 1 # filling the last two rows with "full bits" (represents black)
         # Turn starts off as white, so no need to set the turn bit (board[8:0:0]) to 1.
@@ -89,7 +89,7 @@ class Board:
         '''
         Numpy Board --> Constant tensor of the board
         '''
-        return tf.constant(self.board, dtype=tf.uint8)
+        return tf.constant(self.board, dtype=tf.float32)
 
     def play_move(self, move, promotion):
         '''
@@ -200,20 +200,20 @@ class Board:
         Castles queenside according to colour
         '''
         if colour == 'w':
-            king_index = parse_index('e1')
-            rook_index = parse_index('a1')
-            king_target = parse_index('c1')
-            rook_target = parse_index('d1')
+            king_index = Board.parse_index('e1')
+            rook_index = Board.parse_index('a1')
+            king_target = Board.parse_index('c1')
+            rook_target = Board.parse_index('d1')
             king_char = 'k'
             rook_char = 'r'
         else:
-            king_index = parse_index('e8')
-            rook_index = parse_index('a8')
-            king_target = parse_index('c8')
-            rook_target = parse_index('d8')
+            king_index = Board.parse_index('e8')
+            rook_index = Board.parse_index('a8')
+            king_target = Board.parse_index('c8')
+            rook_target = Board.parse_index('d8')
             king_char = 'K'
             rook_char = 'R'
-        castling_logic(self, king_index, rook_index, king_target, rook_target, king_char, rook_char)
+        self.castling_logic(king_index, rook_index, king_target, rook_target, king_char, rook_char)
 
     def castling_logic(self, king_index, rook_index, king_target, rook_target, king_char, rook_char):
         '''
