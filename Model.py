@@ -6,21 +6,55 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
+# for conv:
+from tensorflow import keras
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Conv3D, Flatten, Conv2D
+
+from Game import Game
+import Board
+
+from tensorflow.keras import backend as K
+
+# for chess
+import chess
+from chess.engine import Cp, Mate, MateGiven
+import chess.pgn
+
 batch_size = 128
 
 np_board_shape = (9, 8, 13)
 np_board_shape_flat = 9*8*13
 
-model = keras.Sequential([
-    keras.layers.InputLayer(input_shape=(936,)),
-    keras.layers.Dense(128, activation='relu'),
-    keras.layers.Dense(128, activation='relu'),
-    keras.layers.Dense(128, activation='relu'),
-    keras.layers.Dense(1)])
+#model = keras.Sequential([
+#    keras.layers.InputLayer(input_shape=(936,)),
+#    keras.layers.Dense(512, activation='relu'),
+#    keras.layers.Dense(512, activation='relu'),
+#    keras.layers.Dense(1)])
+
+conv_model = Sequential()
+inp = keras.layers.Input(batch_input_shape=(None,9,8,13))# ok just assume 13 channels for now
+conv_model.add(inp)
+conv_model.add(Conv2D(256, kernel_size=4, activation='relu')) # TODO: the one here is usually for grayscale images, not sure how this will work with 1/0 bin
+conv_model.add(Conv2D(256, kernel_size=4, activation='relu')) # kernel size 4 works, 5 does not because of dim input (none, 9, 8, 13), idk?
+conv_model.add(Flatten())
+conv_model.add(Dense(1))
+
+#model_test = Sequential()
+#inp_test = keras.layers.Input(shape=(9,8,13))
+#model_test.add(inp_test)
+#model_test.add(Dense(256, activation='relu')) # TODO: the one here is usually for grayscale images, not sure how this will work with 1/0 bin
+#model_test.add(Dense(256, activation='relu')) # kernel size 4 works, 5 does not because of dim input (none, 9, 8, 13), idk?
+#model_test.add(Flatten())
+#model_test.add(Dense(1))
 
 
 
-model.compile(optimizer='rmsprop',loss='mean_squared_error')
+optimizer = keras.optimizers.Adam(lr=0.01)
+conv_model.compile(optimizer=optimizer,loss='mean_absolute_error') # did not like mse...
+print("survived?")
+
+#model.compile(optimizer='rmsprop',loss='mean_absolute_error', metrics=['accuracy'])
 
 
 # getting the training data
@@ -32,11 +66,11 @@ scores = []
 for example in train_list:
     # get the board, score
     board, score = example[0], example[1]
-    flat_board = np.array(board).flatten()
-    positions.append(flat_board)
+    board = np.array(board) # TODO: .flatten() for the non-convolutional model
+    positions.append(board)
     scores.append(score)
 
-print(positions[0].shape, type(positions[10])) # so successfully flattened
+print(positions[0].shape, type(positions[10]))
 print(type(scores[0]))
 
 partial_train_index = len(positions)//2 + len(positions)//4 # use 75% of training data for fitting, 25% for validation
@@ -47,16 +81,52 @@ validation_scores = np.array(scores[partial_train_index:]) # the tale of a mispl
 
 print(training_positions.shape, "tp shape", type(training_positions)) # (100, 936)
 print(training_scores.shape, "ts shape", type(training_scores)) # (100,) So this should work, but for some reason it's complaining x doesn't fit y.
+print(training_positions[0].shape, "one example shape")
 
 
-print(model.summary())
+print(conv_model.summary())
 
-history = model.fit(training_positions, 
-                    training_scores,
-                    epochs = 1000,
-                    batch_size= 256,
-                    validation_data=(validation_positions, validation_scores),
-                    shuffle=True)
+#history = model.fit(training_positions, 
+#                    training_scores,
+#                    epochs = 100,
+#                    batch_size= 50,
+#                    validation_data=(validation_positions, validation_scores),
+#                    shuffle=True)
 save_path = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/model_dir"
 
-model.save()
+history = conv_model.fit(training_positions,
+                        training_scores,
+                        epochs=50,
+                        batch_size=64,
+                        validation_data=(validation_positions,validation_scores),
+                        shuffle=True)
+
+
+
+train_path_tal = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/Tal.pgn"
+tal_file = open(train_path_tal)
+
+game = chess.pgn.read_game(tal_file)
+
+np_board =  Board.Board()
+py_board = chess.Board()
+print(np.array(np_board.board).shape)
+
+
+SF_DEPTH = 10 # depth for stockfish
+
+ANALYSIS_TIME = 0.1 # in seconds
+
+path = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/stockfish/stockfish-11-win/stockfish-11-win/Windows/stockfish_20011801_x64.exe"
+
+engine = chess.engine.SimpleEngine.popen_uci(path)
+
+for move in game.mainline_moves():
+    # update the np board
+    Game.play_move_on_np_board(np_board, move)
+    py_board.push(move)
+    score =  engine.analyse(py_board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
+    my_board = np.array(np_board.board)
+    prediction = conv_model.predict(np.array([my_board,])) # Ok so it was expecting a list of predictions, for a single prediction use this
+    print("score:",score,"prediction:",prediction)
+    #numerical_score = get_numerical_score(score)

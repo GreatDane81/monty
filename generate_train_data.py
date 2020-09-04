@@ -39,9 +39,6 @@ def generate_train_data_from_PGN(pgn, out_file_path, limit):
         py_board = chess.Board()
         for move in game.mainline_moves():
             # update the np board
-            if str(move) == "a1c1":
-                Game.play_move_on_np_board(np_board, move)
-                continue
             Game.play_move_on_np_board(np_board, move)
             # update the py board
             py_board.push(move)

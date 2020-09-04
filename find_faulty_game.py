@@ -13,7 +13,7 @@ train_path_tal = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/m
 tal_file = open(train_path_tal)
 
 start = 0
-stop = 1136
+stop = 9
 while start < stop:
     game = chess.pgn.read_game(tal_file)
     start += 1
