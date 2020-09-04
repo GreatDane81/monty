@@ -8,8 +8,12 @@ PIECES = 13 # 6 for white, 6 for black + 1 for empty/full bit.
 # Storing these in row 9, will be important to engine eval of a lot of positions.
 # Notice that this effectively only stores whether or not the king has moved,
 # otherwise legal_moves() takes care of the rest
-WHITE_CASTLE_BIT = 1 # will be at board[8, 1, 0]
-BLACK_CASTLE_BIT = 1 # [8, 2, 0]
+
+# change: all stored at [8, x, 0], but this shift determines where exactly
+WHITE_KSIDE_CASTLE_SHIFT = 1 # will be at board[8,1,0]
+WHITE_QSIDE_CASTLE_SHIFT = 2 # will be at board[8,2,0]
+BLACK_KSIDE_CASTLE_SHIFT = 3 # will be at board[8,3,0]
+BLACK_QSIDE_CASTLE_SHIFT = 4 # will be at board[8,4,0]
 # pro tip, can use a PLAYER_TURN*6 + PIECE_SHIFT to address the pieces vector.
 
 # n for knight for disambuity, I'm sorry
@@ -19,7 +23,6 @@ LETTER_TO_ROW = {'a':0, 'b':1, 'c':2, 'd':3, 'e':4,'f':5, 'g':6,'h':7}
 PIECE_TO_BARRAY = {'p':1, 'n':2, 'b':3, 'r':4, 'q':5, 'k':6,'P':7, 'N':8, 'B':9, 'R':10, 'Q':11, 'K':12}
 
 class Board: 
-    
     
 
     def __init__(self):
@@ -38,8 +41,10 @@ class Board:
         self.set_back_rank('w')
         self.set_back_rank('b')
         # Making sure both sides can castle:
-        self.board[8, 1, 0] = WHITE_CASTLE_BIT
-        self.board[8, 2, 0] = BLACK_CASTLE_BIT
+        self.board[8, WHITE_KSIDE_CASTLE_SHIFT, 0] = 1 # white_k_side
+        self.board[8, WHITE_QSIDE_CASTLE_SHIFT, 0] = 1 # white_q_side
+        self.board[8, BLACK_KSIDE_CASTLE_SHIFT, 0] = 1 # black k side
+        self.board[8, BLACK_QSIDE_CASTLE_SHIFT, 0] = 1 # black q side
 
     def set_back_rank(self, colour):
         if colour == 'w':
@@ -104,6 +109,19 @@ class Board:
         target_index = indices[1]
         # get the piece from the start index
         piece = Board.get_piece_from_index(self.board, start_index[0], start_index[1])
+        # check if the king is being moved. If yes, remove appropriate castle rights
+        if piece == "k":
+            self.set_white_no_castle("A") # redundant sometimes, but i think safety is key here
+        if piece == "K":
+            self.set_black_no_castle("A")
+        if piece == "r" and start_index == Board.parse_index("h1"):
+            self.set_white_no_castle("K")
+        if piece == "r" and start_index == Board.parse_index("a1"):
+            self.set_white_no_castle("Q")
+        if piece == "R" and start_index == Board.parse_index("h8"):
+            self.set_black_no_castle("K")
+        if piece == "R" and start_index == Board.parse_index("a8"):
+            self.set_black_no_castle("Q")
         # next, empty the index from the start index
         self.empty_index(start_index[0], start_index[1])
         # then, update the target index
@@ -124,9 +142,10 @@ class Board:
         start_sq = move_str[0:2]
         target_sq = move_str[2:4]
         # g1 should be 0, 6
-        start_index = (int(start_sq[1]) - 1, LETTER_TO_ROW[start_sq[0]])
-        target_index = (int(target_sq[1]) -1, LETTER_TO_ROW[target_sq[0]])
+        start_index = Board.parse_index(start_sq)
+        target_index = Board.parse_index(target_sq)
         return [start_index, target_index]
+    
             
     @staticmethod
     def get_piece_from_index(board, row, col):
@@ -233,7 +252,10 @@ class Board:
         self.update_index(rook_target[0], rook_target[1], rook_char)
         self.update_turn()
         # update castling bit
-        self.castle_update(king_char)
+        if king_char == "k":
+            self.set_white_no_castle("A")
+        else:
+            self.set_black_no_castle("A")
 
     @staticmethod
     def parse_index(index):
@@ -248,14 +270,60 @@ class Board:
     def update_turn(self):
         self.board[8,0,0] = 1 - self.board[8,0,0]
 
-    def white_can_castle(self):
-        return self.board[8, 1, 0] == 1
-
-    def black_can_castle(self):
-        return self.board[8,2,0] == 1
-
-    def castle_update(self, king):
-        if king == 'k':
-            self.board[8,1, 0] = 0
+    def white_can_castle(self, side):
+        """
+        A for either side
+        K for kingside, Q for Q side
+        """
+        if side == "A":
+            # want to know if you can castle on either side
+            return self.board[8, WHITE_KSIDE_CASTLE_SHIFT, 0] == 1 or self.board[8, WHITE_QSIDE_CASTLE_SHIFT, 0] == 1
+        if side == "K":
+            side_index = WHITE_KSIDE_CASTLE_SHIFT
+        else: # == "Q"
+            side_index = WHITE_QSIDE_CASTLE_SHIFT
+        return self.board[8, side_index, 0] == 1
+    
+    def set_white_no_castle(self, type):
+        """
+        A: for no castling at all
+        K: for no kingside
+        Q: for no queenside
+        """
+        if type == "A":
+            self.board[8,WHITE_KSIDE_CASTLE_SHIFT, 0] = 0
+            self.board[8,WHITE_QSIDE_CASTLE_SHIFT,0] = 0
+        elif type == "K":
+                self.board[8, WHITE_KSIDE_CASTLE_SHIFT, 0] = 0 # set the white kside to 0
         else:
-            self.board[8,2,0] = 0
+            self.board[8,WHITE_QSIDE_CASTLE_SHIFT,0] = 0
+
+    
+
+    def black_can_castle(self, side):
+        """
+        A for either side
+        K for kingside, Q for Q side
+        """
+        if side == "A":
+            # want to know if you can castle on either side
+            return self.board[8, BLACK_KSIDE_CASTLE_SHIFT, 0] == 1 or self.board[8, BLACK_QSIDE_CASTLE_SHIFT, 0] == 1
+        if side == "K":
+            side_index = BLACK_KSIDE_CASTLE_SHIFT
+        else:
+            side_index = BLACK_QSIDE_CASTLE_SHIFT
+        return self.board[8, side_index, 0] == 1
+    
+    def set_black_no_castle(self, side):
+        """
+        A: for no castling at all
+        K: for no kingside
+        Q: for no queenside
+        """
+        if side == "A":
+            self.board[8,BLACK_KSIDE_CASTLE_SHIFT, 0] = 0
+            self.board[8,BLACK_QSIDE_CASTLE_SHIFT,0] = 0
+        elif side == "K":
+            self.board[8, BLACK_KSIDE_CASTLE_SHIFT, 0] = 0 # set the white kside to 0
+        else:
+            self.board[8,BLACK_QSIDE_CASTLE_SHIFT,0] = 0

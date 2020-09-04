@@ -16,7 +16,7 @@ import pickle
 # Want to do this in two ways: 
 
 # 1. By pgn of a game that was played
-def generate_train_data_from_PGN(pgn, out_file_path):
+def generate_train_data_from_PGN(pgn, out_file_path, limit):
     """
     (file, str) -> None
 
@@ -33,18 +33,24 @@ def generate_train_data_from_PGN(pgn, out_file_path):
     game_num = 0
     # Get the game from pgn
     game = chess.pgn.read_game(pgn)
-    while game != None:
+    while game != None and game_num < limit:
         # Generate the tensorboard and py boards
         np_board =  Board.Board()
         py_board = chess.Board()
         for move in game.mainline_moves():
             # update the np board
+            if str(move) == "a1c1":
+                Game.play_move_on_np_board(np_board, move)
+                continue
             Game.play_move_on_np_board(np_board, move)
             # update the py board
             py_board.push(move)
             score =  engine.analyse(py_board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
             numerical_score = get_numerical_score(score)
             # Now generate the training pair
+            if numerical_score == None:
+                # then skip the rest of the game, because we reached a mating net
+                break
             train_list.append((np_board.board, numerical_score)) # Good, training data produced
         game = chess.pgn.read_game(pgn)
         print("finished game", game_num)
@@ -79,8 +85,12 @@ def erase_train_data(out_file_path):
 def get_numerical_score(score):
     """
     (PovScore) --> +int if white leading, -int if black leading, 0 if even
+
+    If mate() or mate_given(), return a signal to skip terminate the game
     """
     # since white is positive, will be negative if black is leading, so
+    if score.is_mate():
+        return None
     return float(score.white().score())
 
 
@@ -102,8 +112,11 @@ engine = chess.engine.SimpleEngine.popen_uci(path)
 
 out_file_path = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/training_out_file"
 
+train_path_tal = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/Tal.pgn"
+
 
 if __name__ == "__main__":
     erase_train_data(out_file_path)
-    generate_train_data_from_PGN(file, out_file_path)
+    tal_file = open(train_path_tal)
+    generate_train_data_from_PGN(tal_file, out_file_path, 1000)
     print("generated")
