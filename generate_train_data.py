@@ -55,6 +55,16 @@ def generate_train_data_from_PGN(pgn, out_file_path, limit):
     store_training_data(train_list, out_file_path)
     print("finished writing")
 
+def generate_balanced_data(pgn, out_file_path, limit):
+    '''
+    Same Idea as before, but here the probability of a score being added to the training list
+    will depend on how "average" it is.
+
+    To encourage a balanced data set, the more outlying a score is, the more likely is to be included.
+
+    This was computed given the pandas functionality from Model.py
+    '''
+
 def store_training_data(train_list, out_file_path):
     """
     [] of (board, score) to be pickled in outfile
