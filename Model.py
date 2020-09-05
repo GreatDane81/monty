@@ -37,26 +37,16 @@ np_board_shape_flat = 9*8*13
 conv_model = Sequential()
 inp = keras.layers.Input(batch_input_shape=(None,9,8,13))# ok just assume 13 channels for now
 conv_model.add(inp)
-conv_model.add(Conv2D(512, kernel_size=4, activation='relu')) # TODO: the one here is usually for grayscale images, not sure how this will work with 1/0 bin
-conv_model.add(Conv2D(256, kernel_size=4, activation='relu')) # kernel size 4 works, 5 does not because of dim input (none, 9, 8, 13), idk?
+conv_model.add(Conv2D(256, kernel_size=3, activation='relu')) # TODO: the one here is usually for grayscale images, not sure how this will work with 1/0 bin
+conv_model.add(Conv2D(256, kernel_size=3, activation='relu')) # kernel size 4 works, 5 does not because of dim input (none, 9, 8, 13), idk?
 conv_model.add(Flatten())
 conv_model.add(Dense(1))
 
-#model_test = Sequential()
-#inp_test = keras.layers.Input(shape=(9,8,13))
-#model_test.add(inp_test)
-#model_test.add(Dense(256, activation='relu')) # TODO: the one here is usually for grayscale images, not sure how this will work with 1/0 bin
-#model_test.add(Dense(256, activation='relu')) # kernel size 4 works, 5 does not because of dim input (none, 9, 8, 13), idk?
-#model_test.add(Flatten())
-#model_test.add(Dense(1))
-
-
 
 optimizer = keras.optimizers.Adam(lr=0.1)
-conv_model.compile(optimizer=optimizer,loss='mean_absolute_error') # did not like mse...
-print("survived?")
+conv_model.compile(optimizer=optimizer,loss='mean_absolute_error') 
+print("compiled successfully")
 
-#model.compile(optimizer='rmsprop',loss='mean_absolute_error', metrics=['accuracy'])
 
 
 # getting the training data
@@ -79,8 +69,8 @@ scores_sum = np.sum(scores)
 scores_std = np.std(scores)
 print(scores_sum, "score sum", scores_std, "score std")
 
-for i in range(0, len(scores)):
-    scores[i] = (scores[i] - scores_sum)/scores_std
+#for i in range(0, len(scores)):
+#    scores[i] = (scores[i] - scores_sum)/scores_std
 
 partial_train_index = len(positions)//2 + len(positions)//4 # use 75% of training data for fitting, 25% for validation
 training_positions = np.array(positions[:partial_train_index]) # convert to NP to make it readable for keras, trying to flatten
@@ -95,18 +85,11 @@ print(training_positions[0].shape, "one example shape")
 
 print(conv_model.summary())
 
-#history = model.fit(training_positions, 
-#                    training_scores,
-#                    epochs = 100,
-#                    batch_size= 50,
-#                    validation_data=(validation_positions, validation_scores),
-#                    shuffle=True)
-
 
 history = conv_model.fit(training_positions,
                         training_scores,
                         epochs=5,
-                        batch_size=64,
+                        batch_size=128,
                         validation_data=(validation_positions,validation_scores),
                         shuffle=True)
 

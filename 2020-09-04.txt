@@ -2,4 +2,48 @@ Ok, so a lot of progress was made today.
 
 Shifted from loss of 8k, to 104k (!!!) down to 170 ish with no training. 
 
-Biggest shift was convolutional network instead of flattening the input: I went through the trouble of making the data relate logically in space, that must be reflected in the network. Can't just flatten and hope you're chilling. You lose the relationship
+Biggest shift was convolutional network instead of flattening the input: 
+- I went through the trouble of making the data relate logically in space, that must be reflected in the network. 
+- Can't just flatten, because how the data relates spatially is critical for this dataset.
+
+--- Update in the evening ---
+
+I've gone to the Acer, the GPU is already working wonders. Even the CPU is faster, forget about the separate GPU.
+I don't have a concrete number to tell you how much faster the training is, but it seems like a factor of 1.5-2,
+maybe even 2.5 or something.
+
+I've added all the files for setting up the GPU to the git.
+
+I should start branching at some point, maybe make a dev branch and a master branch for clean up when it's all done.
+
+I currently have ~60k training examples, with 1000 games from Tal. As I write this, 2800 more games from Carlsen are being
+generated as training data. I'm going to finish writing this, and go to sleep, but here's what I learned about networks today.
+
+Not all of it is new, but all of it is practical implications I didn't have before.
+
+- The biggest takeaway is that no solution is universal: every website I came across said that building a network is a lot of
+debugging using "general principles". 
+
+- Convolutional networks retain shape, but they still "squish" local features together into a smaller matrix. I don't want to use
+too much locality, the whole point is that stockfish uses the ENTIRE board, not just one component of it.
+
+- The "channels" idea is correctly applied i think. 1 in the first channel if the square is full, and exactly one of twelve channels active
+to represent the piece.
+
+- I had a lot of good debugging - Tal game 1137 messed up my castling logic, caused me to throw out all the data - there's no point saving in the
+middle to preserve a corrupt misrepresentation.
+
+- I need to better understand how fast I should expect the loss to converge, what loss to expect, and so on. 
+
+- How you evaluate loss is entirely dataset specific: If you're doing a linear regression in the millions, a loss of 1000 is good. For my data, it's not.
+
+- The choice of loss function is really important. I wanted to punish "bad outliers" i.e identifying a stockfish score of +1300 as 6.7 (which I had) means
+the network is really fucked.
+
+- My dataset is a little problematic. The Tal game I had to manually debug had some really odd positions, but generally as I add more modern games, a lot of
+games are going to have little positions of +1, -1, or somewhere in between. Because they just resign if they have to give up a bunch of material to save mate
+
+- Basically the distribution is really weird. Lots of positions in the middle, which is good, but not many positions with big leads. Causes me to think
+blunder identification will be pretty bad. We'll see, maybe I can find a bunch of games blunders. Lord knows I simply can't produce them myself.
+
+- But yea, happy with the progress. Seems like all that's left is figuring how to build the network properly, but easier said than done.
