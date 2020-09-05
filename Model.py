@@ -1,8 +1,7 @@
 import generate_train_data
 
-from tensorflow import keras
+from tensorflow import keras 
 
-import matplotlib.pyplot as plt
 
 import numpy as np
 
@@ -61,7 +60,7 @@ print("survived?")
 
 
 # getting the training data
-out_file_path = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/training_out_file"
+out_file_path = "C:/Users/Ethan/Documents/GitHub/monty/training_out_file"
 train_list = generate_train_data.load_training_data(out_file_path)
 
 positions = []
@@ -102,7 +101,7 @@ print(conv_model.summary())
 #                    batch_size= 50,
 #                    validation_data=(validation_positions, validation_scores),
 #                    shuffle=True)
-save_path = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/model_dir"
+
 
 history = conv_model.fit(training_positions,
                         training_scores,
@@ -116,7 +115,7 @@ history = conv_model.fit(training_positions,
 
 
 
-train_path_tal = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/Tal.pgn"
+train_path_tal = "C:/Users/Ethan/Documents/GitHub/monty/Tal.pgn"
 tal_file = open(train_path_tal)
 
 game = chess.pgn.read_game(tal_file)
@@ -130,7 +129,7 @@ SF_DEPTH = 10 # depth for stockfish
 
 ANALYSIS_TIME = 0.1 # in seconds
 
-path = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/stockfish/stockfish-11-win/stockfish-11-win/Windows/stockfish_20011801_x64.exe"
+path = "C:/Users/Ethan/Documents/GitHub/monty/stockfish/stockfish-11-win/stockfish-11-win/Windows/stockfish_20011801_x64"
 
 engine = chess.engine.SimpleEngine.popen_uci(path)
 
