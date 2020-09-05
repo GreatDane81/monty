@@ -1,0 +1,5 @@
+Ok, so a lot of progress was made today.
+
+Shifted from loss of 8k, to 104k (!!!) down to 170 ish with no training. 
+
+Biggest shift was convolutional network instead of flattening the input: I went through the trouble of making the data relate logically in space, that must be reflected in the network. Can't just flatten and hope you're chilling. You lose the relationship

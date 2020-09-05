@@ -115,5 +115,6 @@ train_path_tal = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/m
 if __name__ == "__main__":
     erase_train_data(out_file_path)
     tal_file = open(train_path_tal)
-    generate_train_data_from_PGN(tal_file, out_file_path, 1000)
+    generate_train_data_from_PGN(tal_file, out_file_path, 250)
+    # committed the non-normalized data, going to try normalizing now
     print("generated")

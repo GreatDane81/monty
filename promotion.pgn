@@ -1,0 +1,13 @@
+[Event "Queen promotion fake game"]
+[Site "01"]
+[Date "1997.??.??"]
+[EventDate "?"]
+[Round "?"]
+[Result "1-0"]
+[White "A"]
+[Black "b"]
+[ECO "A06"]
+[WhiteElo "?"]
+[BlackElo "?"]
+[PlyCount "6"]
+1.  f4 Nc6 2.  f5 Nb8 3.  f6 Nc6 4.  fxg7 Nb8 5.  gxh8=N 

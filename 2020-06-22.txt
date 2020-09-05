@@ -1,0 +1,3 @@
+Next problem is figuring out how to work the PovScore class for stockfish, and configuring it for training.
+I need an upper bound, a lower bound, and a continuum in between for keras training.
+Converting the stockfish evaluation is the last step before i can start training the model, looks like. That and cleaning up.

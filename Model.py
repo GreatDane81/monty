@@ -21,6 +21,9 @@ import chess
 from chess.engine import Cp, Mate, MateGiven
 import chess.pgn
 
+# for model storage
+from tensorflow.keras.models import load_model
+
 batch_size = 128
 
 np_board_shape = (9, 8, 13)
@@ -35,7 +38,7 @@ np_board_shape_flat = 9*8*13
 conv_model = Sequential()
 inp = keras.layers.Input(batch_input_shape=(None,9,8,13))# ok just assume 13 channels for now
 conv_model.add(inp)
-conv_model.add(Conv2D(256, kernel_size=4, activation='relu')) # TODO: the one here is usually for grayscale images, not sure how this will work with 1/0 bin
+conv_model.add(Conv2D(512, kernel_size=4, activation='relu')) # TODO: the one here is usually for grayscale images, not sure how this will work with 1/0 bin
 conv_model.add(Conv2D(256, kernel_size=4, activation='relu')) # kernel size 4 works, 5 does not because of dim input (none, 9, 8, 13), idk?
 conv_model.add(Flatten())
 conv_model.add(Dense(1))
@@ -50,7 +53,7 @@ conv_model.add(Dense(1))
 
 
 
-optimizer = keras.optimizers.Adam(lr=0.01)
+optimizer = keras.optimizers.Adam(lr=0.1)
 conv_model.compile(optimizer=optimizer,loss='mean_absolute_error') # did not like mse...
 print("survived?")
 
@@ -72,6 +75,13 @@ for example in train_list:
 
 print(positions[0].shape, type(positions[10]))
 print(type(scores[0]))
+
+scores_sum = np.sum(scores)
+scores_std = np.std(scores)
+print(scores_sum, "score sum", scores_std, "score std")
+
+for i in range(0, len(scores)):
+    scores[i] = (scores[i] - scores_sum)/scores_std
 
 partial_train_index = len(positions)//2 + len(positions)//4 # use 75% of training data for fitting, 25% for validation
 training_positions = np.array(positions[:partial_train_index]) # convert to NP to make it readable for keras, trying to flatten
@@ -96,10 +106,13 @@ save_path = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/
 
 history = conv_model.fit(training_positions,
                         training_scores,
-                        epochs=50,
+                        epochs=5,
                         batch_size=64,
                         validation_data=(validation_positions,validation_scores),
                         shuffle=True)
+
+#conv_model.save('conv_model.h5') # saves the whole file into this file
+
 
 
 
