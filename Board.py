@@ -45,6 +45,7 @@ class Board:
         self.board[8, WHITE_QSIDE_CASTLE_SHIFT, 0] = 1 # white_q_side
         self.board[8, BLACK_KSIDE_CASTLE_SHIFT, 0] = 1 # black k side
         self.board[8, BLACK_QSIDE_CASTLE_SHIFT, 0] = 1 # black q side
+        self.move_stack = []
 
     def set_back_rank(self, colour):
         if colour == 'w':
@@ -131,6 +132,8 @@ class Board:
         self.update_index(target_index[0], target_index[1], piece)
         # And switch player turns
         self.update_turn()
+    
+
     @staticmethod
     def parse_move_indices(move):
         '''

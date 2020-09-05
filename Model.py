@@ -25,7 +25,10 @@ from tensorflow.keras.models import load_model
 
 # for analsyis of distribution of scores
 import pandas as pd
-import matplotlib.pyplot as plt
+
+
+# for data sorting
+from operator import itemgetter
 
 
 np_board_shape = (9, 8, 13)
@@ -39,9 +42,9 @@ conv_model.add(Conv2D(256, kernel_size=3, activation='selu')) # TODO: the one he
 conv_model.add(Flatten())
 conv_model.add(Dense(1))
 
-optimizer = keras.optimizers.Adadelta()
+optimizer = keras.optimizers.Adam()
 
-conv_model.compile(optimizer=optimizer,loss='huber')  # maybe the idea should be use functions that identify "average case" which are by far
+conv_model.compile(optimizer=optimizer,loss='mean_absolute_error')  # maybe the idea should be use functions that identify "average case" which are by far
 # more common that outlier "totally winning" situations to fit?
 print("compiled successfully")
 
@@ -50,6 +53,22 @@ print("compiled successfully")
 # getting the training data
 out_file_path = "C:/Users/Ethan/Documents/GitHub/monty/training_out_file"
 train_list = generate_train_data.load_training_data(out_file_path)
+
+# going to try sorting by scores, and select data by each quintile in equal proportions
+
+sorted_train_list = sorted(train_list,key=itemgetter(1))
+print(sorted_train_list[0][1]) # nice ok, so now everything is sorted.
+# might want to do this by absolute value, just so "big scores" are stored.
+
+sorted_positions = []
+sorted_scores = []
+for example in sorted_train_list:
+    board, score = example[0], example[1]
+    board = np.array(board)
+    sorted_positions.append(board)
+    sorted_scores.append(score)
+# going to try something a bit ad hoc, but: take bottom 10%, middle 10%, top 10% and try training on that. see what the results are
+
 
 positions = []
 scores = []
@@ -73,10 +92,19 @@ print(scores_sum, "score sum", scores_std, "score std")
 #    scores[i] = (scores[i] - scores_mean)/scores_std
 
 partial_train_index = len(positions)//2 + len(positions)//4 # use 75% of training data for fitting, 25% for validation
-training_positions = np.array(positions[:partial_train_index]) # convert to NP to make it readable for keras, trying to flatten
+#training_positions = np.array(positions[:partial_train_index]) # convert to NP to make it readable for keras, trying to flatten
 validation_positions = np.array(positions[partial_train_index:])
-training_scores = np.array(scores[:partial_train_index])
+#training_scores = np.array(scores[:partial_train_index])
 validation_scores = np.array(scores[partial_train_index:]) # the tale of a misplaced colon costing me an hour
+
+PERCENTILE = len(train_list)//100
+BOTTOM_TEN_PERCENT_POSITIONS = 10*PERCENTILE # positions where black is most winning
+TOP_TEN_PERCENT_POSITIONS = 95*PERCENTILE
+MIDDLE_BOTTOM_POSITIONS = 45*PERCENTILE
+MIDDLE_TOP_POSITIONS = 55*PERCENTILE
+
+training_positions = np.array(sorted_positions[:BOTTOM_TEN_PERCENT_POSITIONS] + sorted_positions[MIDDLE_BOTTOM_POSITIONS:MIDDLE_TOP_POSITIONS] + sorted_positions[TOP_TEN_PERCENT_POSITIONS:])
+training_scores = np.array(sorted_scores[:BOTTOM_TEN_PERCENT_POSITIONS] + sorted_scores[MIDDLE_BOTTOM_POSITIONS:MIDDLE_TOP_POSITIONS] + sorted_scores[TOP_TEN_PERCENT_POSITIONS:])
 
 print(training_positions.shape, "tp shape", type(training_positions)) # (100, 936)
 print(training_scores.shape, "ts shape", type(training_scores)) # (100,) So this should work, but for some reason it's complaining x doesn't fit y.
@@ -86,16 +114,14 @@ print(training_positions[0].shape, "one example shape")
 print(conv_model.summary())
 
 
-#history = conv_model.fit(training_positions,
-#                        training_scores,
-#                        epochs=1,
-#                        batch_size=64,
-#                        validation_data=(validation_positions,validation_scores),
-#                        shuffle=True)
+history = conv_model.fit(training_positions,
+                        training_scores,
+                        epochs=2,
+                        batch_size=64,
+                        validation_data=(validation_positions,validation_scores),
+                        shuffle=True)
 
-#conv_model.save('conv_model.h5') # saves the whole file into this file
-
-
+conv_model.save('conv_model.h5') # saves the whole mdodel into this file
 
 
 train_path_tal = "C:/Users/Ethan/Documents/GitHub/monty/Tal.pgn"
@@ -116,21 +142,19 @@ path = "C:/Users/Ethan/Documents/GitHub/monty/stockfish/stockfish-11-win/stockfi
 
 engine = chess.engine.SimpleEngine.popen_uci(path)
 
-#for move in game.mainline_moves():
-#    # update the np board
-#    Game.play_move_on_np_board(np_board, move)
-#    py_board.push(move)
-#    score =  engine.analyse(py_board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
-#    standardized_score = (float(score.white().score()) - scores_mean)/scores_std
-#    my_board = np.array(np_board.board)
-#    prediction = conv_model.predict(np.array([my_board,])) # Ok so it was expecting a list of predictions, for a single prediction use this
-#    print("score:",standardized_score,"prediction:",prediction)
+for move in game.mainline_moves():
+    # update the np board
+    Game.play_move_on_np_board(np_board, move)
+    py_board.push(move)
+    score =  engine.analyse(py_board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
+    #standardized_score = (float(score.white().score()) - scores_mean)/scores_std
+    my_board = np.array(np_board.board)
+    prediction = conv_model.predict(np.array([my_board,])) # Ok so it was expecting a list of predictions, for a single prediction use this
+    print("score:",score,"prediction:",prediction)
     #numerical_score = get_numerical_score(score)
 
-data = pd.DataFrame(scores)
+data = pd.DataFrame(training_scores)
 print(data.describe())
 
-#data.hist(bins=1)
-#plt.show()
 
-#print("done")
+print("done")
