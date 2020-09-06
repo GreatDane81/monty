@@ -13,7 +13,7 @@ import numpy as np
 import copy
 
 # for my stuff
-import Board
+import TwoDBoard
 
 def select_move(py_board, game_board):
     '''
@@ -27,7 +27,7 @@ def select_move(py_board, game_board):
     save_board = copy.deepcopy(py_board)
     for move in legal_moves:
         move_str = str(move)
-        py_board.play_move(move_str, move.promotion)
+        py_board.push(move_str, move.promotion)
         my_board = py_board.board
         # get the score
         current_score = model.predict(np.array([my_board,]))
@@ -42,7 +42,7 @@ def select_move(py_board, game_board):
 game_board = chess.Board()
 
 print(game_board)
-python_board = Board.Board()
+python_board = TwoDBoard.TwoDBoard()
 
 model = keras.models.load_model("conv_model.h5")
 
@@ -78,7 +78,8 @@ while True:
     user_move = chess.Move.from_uci(user_input)
     # push the move on the python board and the game board
     game_board.push(user_move)
-    python_board.play_move(str(user_move), user_move.promotion)
+    #python_board.play_move(str(user_move), user_move.promotion)
+    python_board.push(str(user_move), user_move.promotion)
     print(python_board)
     # predict the best move
     result = select_move(python_board, game_board)
@@ -87,7 +88,7 @@ while True:
     monty_move = result[0]
     print("Monty replied with:", monty_move)
     game_board.push(monty_move)
-    python_board.play_move(str(monty_move), monty_move.promotion)
+    python_board.push(str(monty_move), monty_move.promotion)
     print(python_board)
 
 

@@ -1,14 +1,20 @@
 import numpy as np
 
+import chess
+
 ROWS = 9 # 8 for rows, + 1 for storing heuristics. Add more rows with caution
 COLUMNS = 8 # one per col
 
 LETTER_TO_ROW = {'a':0, 'b':1, 'c':2, 'd':3, 'e':4,'f':5, 'g':6,'h':7}
 
-VALUE_TO_PIECE = {128:'k', 9:'q', 5:'r', 4:'b', 3:'n', 1:'p', -128:'K', -9:'Q', -5:'R', -4:'B', -3:'N', -1:'p'}
+VALUE_TO_PIECE = {128:'k', 9:'q', 5:'r', 4:'b', 3:'n', 1:'p', -128:'K', -9:'Q', -5:'R', -4:'B', -3:'N', -1:'P'}
 PIECE_TO_VALUE = {'k':128, 'q':9, 'r':5, 'b':4, 'n':3, 'p':1, 'K':-128, 'Q':-9, 'R':-5, 'B':-4, 'N':-3, 'P':-1} # stored WRT white, mult by BLACK_MULTIPLIER to get black values
 WHITE_MULTIPLIER = 1
 BLACK_MULTIPLIER = -1
+EMPTY_SQUARE = 0
+
+# py chess stuff for promotion
+PIECE_TYPE_TO_VALUE = {6:128, 5:9, 4:5, 3:4, 2:3, 1:1}
 
 # Heuristics:
 TURN_BIT_SHIFT = 0 # at [8,0]
@@ -41,9 +47,9 @@ class TwoDBoard:
         """
         self.board = np.zeros([ROWS, COLUMNS],dtype='float32')
         # fill the 2nd rank with white pawns
-        self.board[1, :] = 1
+        self.board[1, :] = PIECE_TO_VALUE['p']
         # fill the 7th rank with black pawns
-        self.board[6, :] = -1
+        self.board[6, :] = PIECE_TO_VALUE['P']
         self.set_back_rank(WHITE_MULTIPLIER) # set the white back rank
         self.set_back_rank(BLACK_MULTIPLIER) # set the black white rank
         # Done with the board, as everything else is set to 0
@@ -219,7 +225,11 @@ class TwoDBoard:
         # then, update the target index
         if promotion != None:
             # Then get the promotion piece
-            piece = PIECE_TO_CHAR[promotion]
+            piece_type = move.promotion
+            multiplier = WHITE_MULTIPLIER
+            if self.get_move(): # meaning, it's black's turn
+                multiplier = BLACK_MULTIPLIER
+            piece = multiplier*PIECE_TYPE_TO_VALUE[piece_type]
         self.update_index(target_index[0], target_index[1], piece)
         # update material count
         self.update_material_difference()
@@ -227,50 +237,58 @@ class TwoDBoard:
         self.update_turn()
 
     
-    def castle(self, side, colour):
+    def castle(self, colour, side):
         """
         Castling called on any instance of castling.
     
         Will attempt to castle with no checks, assumes valid castle provided
         """
         if colour == "W":
-            
             rank = "1"
+            king_char, rook_char = "k", "r"
+            self.set_white_no_castle("A")
         else: # 'B'
             rank = "8"
+            king_char, rook_char = "K", "R"
+            self.set_black_no_castle("A")
         if side == "K":
             # check the king and rook are in the correct spots
             king_start_index = TwoDBoard.parse_index("e"+rank)
             rook_start_index = TwoDBoard.parse_index("h"+rank)
             king_target_index = TwoDBoard.parse_index("g"+rank)
             rook_target_index = TwoDBoard.parse_index("f"+rank)
-            king = PIECE_TO_VALUE["k"]
-            rook = PIECE_TO_VALUE["r"]
+            king = PIECE_TO_VALUE[king_char]
+            rook = PIECE_TO_VALUE[rook_char]
         else: # 'Q'
             king_start_index = TwoDBoard.parse_index("e"+rank)
             rook_start_index = TwoDBoard.parse_index("a"+rank)
             king_target_index = TwoDBoard.parse_index("c"+rank)
             rook_target_index = TwoDBoard.parse_index("d"+rank)
-            king = PIECE_TO_VALUE["K"]
-            rook = PIECE_TO_VALUE["R"]
+            king = PIECE_TO_VALUE[king_char]
+            rook = PIECE_TO_VALUE[rook_char]
         # Now check the pieces are in the right place to start
-        king_correct = TwoDBoard.get_piece_from_index(king_start_index) == king
-        rook_correct =  TwoDBoard.get_piece_from_index(rook_start_index) == rook
+        alleged_king =  TwoDBoard.get_piece_from_index(self.board, king_start_index[0], king_start_index[1])
+        king_correct = alleged_king == king
+        alleged_rook = TwoDBoard.get_piece_from_index(self.board, rook_start_index[0], rook_start_index[1])
+        rook_correct =  alleged_rook == rook
         if not king_correct or not rook_correct:
+            print(self.board)
+            print(self)
             raise ValueError # Raise an error
         # next check the squares being castled to aren't occupied
-        if TwoDBoard.get_piece_from_index(king_target_index) != None:
+        if TwoDBoard.get_piece_from_index(self.board, king_target_index[0], king_target_index[1]) != EMPTY_SQUARE:
             raise ValueError
-        if TwoDBoard.get_piece_from_index(rook_target_index) != None:
+        if TwoDBoard.get_piece_from_index(self.board, rook_target_index[0], rook_target_index[1]) != EMPTY_SQUARE:
             raise ValueError
         # now we can empty the old indices and update the new ones
-        TwoDBoard.empty_index(king_start_index)
-        TwoDBoard.empty_index(rook_target_index)
+        self.empty_index(king_start_index[0], king_start_index[1])
+        self.empty_index(rook_start_index[0], rook_start_index[1])
         # update
-        TwoDBoard.update_index(king_target_index[0], king_target_index[1], king)
-        TwoDBoard.update_index(rook_target_index[0], rook_target_index[1], rook)
-        
-        
+        self.update_index(king_target_index[0], king_target_index[1], king)
+        self.update_index(rook_target_index[0], rook_target_index[1], rook)
+
+    def get_move(self):
+        return self.board[8, TURN_BIT_SHIFT]
 
 
 
@@ -311,13 +329,4 @@ class TwoDBoard:
         if board[row, col] == 0:
             return None # error checking
         return VALUE_TO_PIECE[board[row, col]]
-        
-
-
-board = TwoDBoard()
-board.push("e2e4", None)
-print(board)
-board.push("b8c6")
-print(board)
-
 

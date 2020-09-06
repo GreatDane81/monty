@@ -2,6 +2,9 @@ import Board # had to change python.linting.pylintEnable to false in settings.
 # weird, looks like a pyLint thing.
 from Game import Game
 
+import TwoDBoard
+from GameTwoD import GameTwoD
+
 import chess
 from chess.engine import Cp, Mate, MateGiven
 import chess.pgn
@@ -35,13 +38,13 @@ def generate_train_data_from_PGN(pgn, out_file_path, limit):
     game = chess.pgn.read_game(pgn)
     while game != None and game_num < limit:
         # Generate the tensorboard and py boards
-        np_board =  Board.Board()
+        np_board =  TwoDBoard.TwoDBoard() # TODO: this line changes when changing data type
         py_board = chess.Board()
         for move in game.mainline_moves():
             # update the np board
-            Game.play_move_on_np_board(np_board, move)
+            GameTwoD.play_move_on_np_board(np_board, move)
             # update the py board
-            py_board.push(move)
+            py_board.push(move) # TODO: this line changes when changing data type
             score =  engine.analyse(py_board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
             numerical_score = get_numerical_score(score)
             # Now generate the training pair
@@ -125,9 +128,14 @@ train_path_morphy = "C:/Users/Ethan/Documents/GitHub/monty/Morphy.pgn"
 
 added_data_out_file = "C:/Users/Ethan/Documents/GitHub/monty/added_data_out_file"
 
+experiment_out_file = "C:/Users/Ethan/Documents/GitHub/monty/experiment_out_file.txt"
+
+
 if __name__ == "__main__":
-    #erase_train_data(out_file_path) # erasing isn't the end of the world since i have the first 1000 tal games saved, but still avoid.
-    morphy_file = open(train_path_morphy)
+    #erase_train_data(added_data_out_file) # erasing isn't the end of the world since i have the first 1000 tal games saved, but still avoid.
+    #morphy_file = open(train_path_morphy)
+    carlsen_file = open(train_path_carlsen)
+    experiment_file = open(experiment_out_file)
     arb_lim = 10000
-    generate_train_data_from_PGN(morphy_file, added_data_out_file, arb_lim)
+    generate_train_data_from_PGN(carlsen_file, experiment_out_file, 500)
     print("generated")

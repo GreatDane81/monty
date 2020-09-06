@@ -8,10 +8,12 @@ import numpy as np
 # for conv_model:
 from tensorflow import keras
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Conv3D, Flatten, Conv2D, MaxPool2D
+from tensorflow.keras.layers import *
 
 from Game import Game
+from GameTwoD import GameTwoD
 import Board
+import TwoDBoard
 
 from tensorflow.keras import backend as K
 
@@ -31,14 +33,14 @@ import pandas as pd
 from operator import itemgetter
 
 
-np_board_shape = (9, 8, 13)
-np_board_shape_flat = 9*8*13
+np_board_shape = (9, 8) # updated
 
 
 conv_model = Sequential()
-inp = keras.layers.Input(batch_input_shape=(None,9,8,13))# ok just assume 13 channels for now
+inp = keras.layers.Input(batch_input_shape=(None,9,8))# ok just assume 13 channels for now
 conv_model.add(inp)
-conv_model.add(Conv2D(512, kernel_size=3, activation='relu')) # TODO: the one here is usually for grayscale images, not sure how this will work with 1/0 bin
+conv_model.add(Dense(128, activation='relu')) # TODO: the one here is usually for grayscale images, not sure how this will work with 1/0 bin
+#conv_model.add(Dropout(rate=0.2))
 conv_model.add(Flatten())
 conv_model.add(Dense(1))
 
@@ -69,6 +71,7 @@ for example in sorted_train_list:
 # going to try something a bit ad hoc, but: take bottom 10%, middle 10%, top 10% and try training on that. see what the results are
 
 
+
 positions = []
 scores = []
 for example in train_list:
@@ -81,28 +84,30 @@ for example in train_list:
 print(positions[0].shape, type(positions[10]))
 print(type(scores[0]))
 
-#scores_sum = np.sum(scores)
-#scores_mean = np.mean(scores)
-#scores_std = np.std(scores)
+positions = np.array(positions)
+scores = np.array(scores)
+
+
+scores_sum = np.sum(scores)
+scores_mean = np.mean(scores)
+scores_std = np.std(scores)
 
 #standardize data to make training the model easier 
 #for i in range(0, len(scores)):
 #    scores[i] = (scores[i] - scores_mean)/scores_std
 
-partial_train_index = 221
-training_positions = np.array(positions[:partial_train_index]) # convert to NP to make it readable for keras, trying to flatten
-validation_positions = np.array(positions[partial_train_index:])
-training_scores = np.array(scores[:partial_train_index])
-validation_scores = np.array(scores[partial_train_index:]) # the tale of a misplaced colon costing me an hour
 
 PERCENTILE = len(train_list)//100
-BOTTOM_PERCENT_POSITIONS = 0*PERCENTILE # positions where black is most winning
-TOP_PERCENT_POSITIONS = 0*PERCENTILE
-MIDDLE_BOTTOM_POSITIONS = 30*PERCENTILE
-MIDDLE_TOP_POSITIONS = 60*PERCENTILE
+BOTTOM_PERCENT_POSITIONS = 1*PERCENTILE # positions where black is most winning
+TOP_PERCENT_POSITIONS = 1*PERCENTILE
+MIDDLE_BOTTOM_POSITIONS = 0*PERCENTILE
+MIDDLE_TOP_POSITIONS = 0*PERCENTILE
 
-#sorted_positions = sorted_positions[:BOTTOM_PERCENT_POSITIONS] + sorted_positions[MIDDLE_BOTTOM_POSITIONS:MIDDLE_TOP_POSITIONS] + sorted_positions[TOP_PERCENT_POSITIONS:]
-#sorted_scores = sorted_scores[:BOTTOM_PERCENT_POSITIONS] + sorted_scores[MIDDLE_BOTTOM_POSITIONS:MIDDLE_TOP_POSITIONS] + sorted_scores[TOP_PERCENT_POSITIONS:]
+sorted_positions = sorted_positions[:BOTTOM_PERCENT_POSITIONS] + sorted_positions[MIDDLE_BOTTOM_POSITIONS:MIDDLE_TOP_POSITIONS] + sorted_positions[TOP_PERCENT_POSITIONS:]
+sorted_scores = sorted_scores[:BOTTOM_PERCENT_POSITIONS] + sorted_scores[MIDDLE_BOTTOM_POSITIONS:MIDDLE_TOP_POSITIONS] + sorted_scores[TOP_PERCENT_POSITIONS:]
+
+sorted_positions= np.array(sorted_positions)
+sorted_scores = np.array(sorted_scores)
 
 # normalize sorted scores:
 #standardize data to make training the model easier 
@@ -113,12 +118,11 @@ MIDDLE_TOP_POSITIONS = 60*PERCENTILE
 
 print(conv_model.summary())
 
-
-history = conv_model.fit(training_positions,
-                        training_scores,
-                        epochs=50,
-                        batch_size=64,
-                        validation_data=(validation_positions,validation_scores),
+history = conv_model.fit(sorted_positions,
+                        sorted_scores,
+                        epochs=2,
+                        batch_size=1,
+                        validation_split=0.2,
                         shuffle=True)
 
 conv_model.save('conv_model.h5') # saves the whole mdodel into this file
@@ -129,7 +133,7 @@ tal_file = open(train_path_tal)
 
 game = chess.pgn.read_game(tal_file)
 
-np_board =  Board.Board()
+np_board =  TwoDBoard.TwoDBoard()
 py_board = chess.Board()
 
 
@@ -143,7 +147,7 @@ engine = chess.engine.SimpleEngine.popen_uci(path)
 
 for move in game.mainline_moves():
     # update the np board
-    Game.play_move_on_np_board(np_board, move)
+    GameTwoD.play_move_on_np_board(np_board, move)
     py_board.push(move)
     score =  engine.analyse(py_board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
     my_board = np.array(np_board.board)
@@ -151,7 +155,7 @@ for move in game.mainline_moves():
     print("score:",score,"prediction:",prediction)
     #numerical_score = get_numerical_score(score)
 
-data = pd.DataFrame(training_scores)
+data = pd.DataFrame(scores)
 print(data.describe())
 
 
