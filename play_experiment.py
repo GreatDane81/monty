@@ -40,6 +40,8 @@ def select_move(py_board, game_board):
 
 
 game_board = chess.Board()
+
+print(game_board)
 python_board = Board.Board()
 
 model = keras.models.load_model("conv_model.h5")
@@ -50,7 +52,7 @@ model = keras.models.load_model("conv_model.h5")
 #print(python_board)
 #result = select_move(python_board, game_board)
 #monty_move = result[0]
-python_board = result[2]
+#python_board = result[2]
 #print("when taken from results")
 #print(python_board)
 

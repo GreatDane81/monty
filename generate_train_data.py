@@ -121,10 +121,13 @@ train_path_tal = "C:/Users/Ethan/Documents/GitHub/monty/Tal.pgn"
 
 train_path_carlsen = "C:/Users/Ethan/Documents/GitHub/monty/Carlsen.pgn"
 
+train_path_morphy = "C:/Users/Ethan/Documents/GitHub/monty/Morphy.pgn"
+
+added_data_out_file = "C:/Users/Ethan/Documents/GitHub/monty/added_data_out_file"
 
 if __name__ == "__main__":
     #erase_train_data(out_file_path) # erasing isn't the end of the world since i have the first 1000 tal games saved, but still avoid.
-    carlsen_file = open(train_path_carlsen)
+    morphy_file = open(train_path_morphy)
     arb_lim = 10000
-    generate_train_data_from_PGN(carlsen_file, out_file_path, arb_lim)
+    generate_train_data_from_PGN(morphy_file, added_data_out_file, arb_lim)
     print("generated")

@@ -14,6 +14,9 @@ WHITE_KSIDE_CASTLE_SHIFT = 1 # will be at board[8,1,0]
 WHITE_QSIDE_CASTLE_SHIFT = 2 # will be at board[8,2,0]
 BLACK_KSIDE_CASTLE_SHIFT = 3 # will be at board[8,3,0]
 BLACK_QSIDE_CASTLE_SHIFT = 4 # will be at board[8,4,0]
+MATERIAL_DIFFERENCE_SHIFT = 0 # will be stored at board[8,0,0]
+WHITE_TOTAL_MATERIAL = 5 # [8,5,0]
+BLACK_TOTAL_MATERIAL = 6 # [8,6,0]
 # pro tip, can use a PLAYER_TURN*6 + PIECE_SHIFT to address the pieces vector.
 
 # n for knight for disambuity, I'm sorry
@@ -21,6 +24,9 @@ PIECE_OFFSET = {'p':1, 'n':2, 'b':3, 'r':4, 'q':5, 'k':6} # offset of 1 for pawn
 PIECE_TO_CHAR = {1:'p', 2:'n', 3:'b', 4:'r', 5:'q', 6:'k',7:'P', 8:'N', 9:'B', 10:'R', 11:'Q', 12:'K'}
 LETTER_TO_ROW = {'a':0, 'b':1, 'c':2, 'd':3, 'e':4,'f':5, 'g':6,'h':7}
 PIECE_TO_BARRAY = {'p':1, 'n':2, 'b':3, 'r':4, 'q':5, 'k':6,'P':7, 'N':8, 'B':9, 'R':10, 'Q':11, 'K':12}
+
+# adding more heuristics, curious to see if it will help training
+PIECE_VALUE = {'k':0, 'p':1, 'b':3, 'n':3, 'r':5, 'q':9}
 
 class Board: 
     
@@ -45,6 +51,7 @@ class Board:
         self.board[8, WHITE_QSIDE_CASTLE_SHIFT, 0] = 1 # white_q_side
         self.board[8, BLACK_KSIDE_CASTLE_SHIFT, 0] = 1 # black k side
         self.board[8, BLACK_QSIDE_CASTLE_SHIFT, 0] = 1 # black q side
+        self.board[8, MATERIAL_DIFFERENCE_SHIFT, 0] = 0 # starts even
         self.move_stack = []
 
     def set_back_rank(self, colour):
@@ -130,6 +137,8 @@ class Board:
             # Then get the promotion piece
             piece = PIECE_TO_CHAR[promotion]
         self.update_index(target_index[0], target_index[1], piece)
+        # update material count
+        self.update_material_difference()
         # And switch player turns
         self.update_turn()
     
@@ -259,6 +268,28 @@ class Board:
             self.set_white_no_castle("A")
         else:
             self.set_black_no_castle("A")
+
+
+    def update_material_difference(self):
+        """
+        recomputes and updates the material difference
+        """
+        # scan the entire board
+        white_total = 0
+        black_total = 0
+        for row in range(0, 8):
+            for col in range(0, 8):
+                piece = Board.get_piece_from_index(self.board, row, col)
+                if piece != None:
+                    # I.e. Non-zero piece
+                    if piece.islower():
+                        white_total += PIECE_VALUE[piece]
+                    else:
+                        piece = piece.lower()
+                        black_total += PIECE_VALUE[piece]
+        self.board[8,MATERIAL_DIFFERENCE_SHIFT,0] = white_total - black_total
+        self.board[8, WHITE_TOTAL_MATERIAL, 0] = white_total
+        self.board[8, BLACK_TOTAL_MATERIAL, 0] = black_total   
 
     @staticmethod
     def parse_index(index):
