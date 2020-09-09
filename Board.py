@@ -1,5 +1,5 @@
 import numpy as np
-# moved it all to class, have to test. Maybe clean up too.
+import chess
 
 ROWS = 8
 COLUMNS = 8
@@ -57,19 +57,21 @@ LETTER_TO_ROW = {'a':0, 'b':1, 'c':2, 'd':3, 'e':4,'f':5, 'g':6,'h':7}
 
 
 class Board: 
+    # TODO: IMPORTANT: call order in play_experiment should be 1. Board.play, 2. Board. pychessboard.play, for computation of attack layers
     def __init__(self):
         '''
         Creates a new board with standard starting position
         '''
         # start with an empty board
         self.board = np.zeros([ROWS, COLUMNS, LAYERS],dtype='float32')
+        # adding a PyChess board to each Board for generating attack layers
+        self.pychess_board = chess.Board() 
         # set up piece layers
         pieces_to_index = {'k':{'e1'}, 'q':{'d1'}, 'r':{'a1','h1'}, 'n':{'b1', 'g1'}, 'b':{'f1','c1'}, 'p':{'a2', 'b2', 'c2', 'd2', 'e2', 'f2', 'g2', 'h2'},
                            'K':{'e8'}, 'Q':{'d8'}, 'R':{'a8','h8'}, 'N':{'b8', 'g8'}, 'B':{'f8','c8'}, 'P':{'a7', 'b7', 'c7', 'd7', 'e7', 'f7', 'g7', 'h7'}}
         self.pieces_setup(pieces_to_index)
         # set up attack layers
-        #self.white_attack_setup()
-        #self.black_attack_setup()
+        self.attack_layer_setup()
         # set up heurestics layer
         self.heurestics_setup()
 
@@ -103,7 +105,28 @@ class Board:
         self.board[MATERIAL_DIFFERENCE_INDEX[0], MATERIAL_DIFFERENCE_INDEX[1], HEURESTICS_LAYER] = 0 # start even
         self.board[WHITE_TOTAL_MATERIAL_INDEX[0], WHITE_TOTAL_MATERIAL_INDEX[1], HEURESTICS_LAYER] = 45 # just the sum
         self.board[BLACK_TOTAL_MATERIAL_INDEX[0], BLACK_TOTAL_MATERIAL_INDEX[1], HEURESTICS_LAYER] = 45
+    
 
+    def attack_layer_setup(self):
+        """
+        Sets up both attack layers, called after every move
+        """
+        for square in chess.SQUARES:
+            # get the attack set
+            attack_set = self.pychess_board.attacks(square)
+            if self.pychess_board.color_at(square) == chess.WHITE:
+                layer = WHITE_ATTACK_LAYER
+            elif self.pychess_board.color_at(square) == chess.BLACK:
+                layer = BLACK_ATTACK_LAYER
+            else:
+                layer = None
+            if layer != None:
+                # then want to go through all the squares to find attacks
+                for attacked_sq in attack_set:
+                    # get the index (row, col)
+                    my_index = Board.pychess_sq_to_my_sq(attacked_sq)
+                    # and increment the right counter
+                    self.board[my_index[0], my_index[1], layer] += 1
 
 
     def __str__(self):
@@ -179,6 +202,8 @@ class Board:
                 # then take it to uppercase for updating correcting
                 piece = piece.upper()
         self.update_index(target_index[0], target_index[1], piece)
+        # update the attack indices
+        self.attack_layer_setup()
         # And switch player turns
         self.update_turn()
 
@@ -308,6 +333,9 @@ class Board:
         """
         turn = self.board[TURN_INDEX[0],TURN_INDEX[1], HEURESTICS_LAYER]
         self.board[TURN_INDEX[0],TURN_INDEX[1], HEURESTICS_LAYER] = 1 - turn
+    
+    def get_turn(self):
+        return self.board[TURN_INDEX[0],TURN_INDEX[1], HEURESTICS_LAYER]
 
     def white_can_castle(self, side):
         """
@@ -444,3 +472,13 @@ class Board:
         target_index = Board.parse_index(target_sq)
         return [start_index, target_index]
 
+    @staticmethod
+    def pychess_sq_to_my_sq(pychess_sq):
+        """
+        Have to do this translation by hand, because library code
+        not working for me
+        """
+        # totally took this from the source
+        row = pychess_sq >> 3
+        col = pychess_sq & 7
+        return (row, col)
