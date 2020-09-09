@@ -1,5 +1,10 @@
+# for np
 import numpy as np
+
+# for attack stuff
 import chess
+from chess.engine import Cp, Mate, MateGiven
+import chess.pgn
 
 ROWS = 8
 COLUMNS = 8
@@ -111,6 +116,9 @@ class Board:
         """
         Sets up both attack layers, called after every move
         """
+        # start by reseting both layers:
+        self.board[:, :, WHITE_ATTACK_LAYER] = np.zeros([ROWS, COLUMNS], dtype='float32')
+        self.board[:, :, BLACK_ATTACK_LAYER] = np.zeros([ROWS, COLUMNS], dtype='float32')
         for square in chess.SQUARES:
             # get the attack set
             attack_set = self.pychess_board.attacks(square)
@@ -157,12 +165,13 @@ class Board:
 
     def play_move(self, move, promotion):
         '''
-        (str, pychess ChessPiece) -> None
+        (pychess "Move", pychess "ChessPiece") -> None
 
         Updates the board given coordinates for a move, promotes if necessary.
         '''
         # start by getting indices
-        indices = Board.parse_move_indices(move)
+        move_str = str(move)
+        indices = Board.parse_move_indices(move_str)
         start_index = indices[0]
         target_index = indices[1]
         # get the piece from the start index
@@ -202,6 +211,8 @@ class Board:
                 # then take it to uppercase for updating correcting
                 piece = piece.upper()
         self.update_index(target_index[0], target_index[1], piece)
+        # then push the move onto  the board
+        self.pychess_board.push(move)
         # update the attack indices
         self.attack_layer_setup()
         # And switch player turns
@@ -482,3 +493,8 @@ class Board:
         row = pychess_sq >> 3
         col = pychess_sq & 7
         return (row, col)
+
+board = Board()
+move = chess.Move.from_uci("e2e4")
+board.play_move(move, None)
+print(board.board[:,:,WHITE_ATTACK_LAYER])
