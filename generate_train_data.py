@@ -33,30 +33,44 @@ def generate_train_data_from_PGN(pgn, out_file_path, limit, skip = 0):
     game_num = 0
     # Get the game from pgn
     fail_count = 0
+    positions_count = 0
+    board_differential_count = 0
     game = chess.pgn.read_game(pgn)
+    game_num += 1
     while game != None and game_num < limit:
+        #print(game.headers["White"])
+        #print(game.headers["Black"])
+        #print(game.headers["Site"])
+        #print(game.headers["Date"])
+        vanilla_board = chess.Board()
+        positions_count = 0
         # Generate the tensorboard and py boards
         np_board =  Board.Board()
         for move in game.mainline_moves():
             # update the np board
             Game.play_move_on_np_board(np_board, move)
-            numerical_score = None
+            #print(move)
+            #print(np_board)
+            vanilla_board.push(move)
+            if vanilla_board != np_board.pychess_board:
+                board_differential_count += 1
+            #print("boards are the same:", vanilla_board == np_board.pychess_board)
             try:
                 score =  engine.analyse(np_board.pychess_board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
+                #vanilla_score = engine.analyse(vanilla_board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
                 numerical_score = get_numerical_score(score)
+                positions_count += 1
+                train_list.append((np_board.board, numerical_score))
             except:
-                fail_count += 1 # weird UCI bug, not sure it's on my end
-                break
-            # Now generate the training pair
-            if numerical_score == None:
-                break # then stop because of mating net
-            else:
-                train_list.append((np_board.board, numerical_score)) # Good, training data produced
+                # Sometimes the engine analysis crashes, and I'm confident it's not my own code
+                # because I can run through every position in Tal.pgn no worries.
+                fail_count += 1
+                break # skip the rest of the game
         game = chess.pgn.read_game(pgn)
-        print("finished game", game_num, "; total failures:", fail_count)
+        print("finished game", game_num, "; positions from game; ", positions_count, "; fails;", fail_count, "; board ineqs;", board_differential_count)
         game_num += 1
     store_training_data(train_list, out_file_path)
-    print("finished writing")
+    print("finished writing, total positions evaluated:", len(train_list))
 
 def generate_balanced_data(pgn, out_file_path, limit):
     '''
@@ -114,7 +128,7 @@ SF_DEPTH = 10 # depth for stockfish
 
 ANALYSIS_TIME = 0.1 # in seconds
 
-path = "C:/Users/Ethan/Documents/GitHub/monty/stockfish/stockfish-11-win/stockfish-11-win/Windows/stockfish_20011801_x64"
+path = "C:/Users/Ethan/Documents/GitHub/monty/lc0-v0.26.1-windows-gpu-nvidia-cuda/lc0.exe"
 
 engine = chess.engine.SimpleEngine.popen_uci(path)
 engine.options['Ponder'] = False
@@ -126,11 +140,12 @@ train_path_tal = "C:/Users/Ethan/Documents/GitHub/monty/Tal.pgn"
 train_path_carlsen = "C:/Users/Ethan/Documents/GitHub/monty/Carlsen.pgn"
 
 new_data_out_file_path = "C:/Users/Ethan/Documents/GitHub/monty/new_data_out_file.txt"
+test_file_out_path = "C:/Users/Ethan/Documents/GitHub/monty/test_file_out_path.txt"
 
 
 if __name__ == "__main__":
     #erase_train_data(out_file_path) # erasing isn't the end of the world since i have the first 1000 tal games saved, but still avoid.
     tal_file = open(train_path_tal)
     arb_lim = 10000
-    generate_train_data_from_PGN(tal_file, new_data_out_file_path, limit=arb_lim)
+    generate_train_data_from_PGN(tal_file, "C:/Users/Ethan/Documents/GitHub/monty/test_file_out_path.txt", limit=arb_lim)
     print("generated")

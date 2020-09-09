@@ -42,7 +42,7 @@ conv_model.add(Dense(1))
 
 optimizer = keras.optimizers.Adam()
 
-conv_model.compile(optimizer=optimizer,loss='mse')  # maybe the idea should be use functions that identify "average case" which are by far
+conv_model.compile(optimizer=optimizer,loss='mae')  # maybe the idea should be use functions that identify "average case" which are by far
 # more common that outlier "totally winning" situations to fit?
 print("compiled successfully")
 
@@ -113,12 +113,12 @@ print(training_scores.shape, "ts shape", type(training_scores)) # (100,) So this
 print(conv_model.summary())
 
 
-#history = conv_model.fit(training_positions,
-#                        training_scores,
-#                        epochs=5,
- #                       batch_size=32,
- #                       validation_split=0.2,
- #                       shuffle=True)
+history = conv_model.fit(training_positions,
+                        training_scores,
+                        epochs=10,
+                        batch_size=32,
+                        validation_split=0.2,
+                        shuffle=True)
 
 #conv_model.save('conv_model.h5') # saves the whole mdodel into this file
 
