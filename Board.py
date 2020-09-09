@@ -27,14 +27,14 @@ BLACKS_TURN = 1
 WHITE_ATTACK_LAYER = 6
 BLACK_ATTACK_LAYER = 7
 
-# HEURISTICS LAYER
+# HEURESTICS LAYER
 HEURESTICS_LAYER = 8
-# HEURISTICS BIT SHIFTS
+# HEURESTICS BIT SHIFTS
 TURN_INDEX = [0,0] # going to leave the rest of the row blank for pattern recognition
-WHITE_KSIDE_CASTLE_INDEX = [2,0] # has to be two dimensions becuase hereustics is now a layer
-WHITE_QSIDE_CASTLE_INDEX = [2,1]
-BLACK_KSIDE_CASTLE_INDEX = [2,2]
-BLACK_QSIDE_CASTLE_INDEX = [2,3]
+WHITE_K_SIDE_CASTLE_INDEX = [2,0] # has to be two dimensions becuase hereustics is now a layer
+WHITE_Q_SIDE_CASTLE_INDEX = [2,1]
+BLACK_K_SIDE_CASTLE_INDEX = [2,2]
+BLACK_Q_SIDE_CASTLE_INDEX = [2,3]
 MATERIAL_DIFFERENCE_INDEX = [4, 0]
 WHITE_TOTAL_MATERIAL_INDEX = [4,1]
 BLACK_TOTAL_MATERIAL_INDEX = [4,2]
@@ -102,10 +102,10 @@ class Board:
         # start by explicitly setting the turn bit
         self.board[TURN_INDEX[0], TURN_INDEX[1], HEURESTICS_LAYER] = 0
         # Then initialize the castling rights
-        self.board[WHITE_KSIDE_CASTLE_INDEX[0], WHITE_KSIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 1
-        self.board[WHITE_QSIDE_CASTLE_INDEX[0], WHITE_KSIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 1
-        self.board[BLACK_KSIDE_CASTLE_INDEX[0], BLACK_KSIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 1
-        self.board[BLACK_QSIDE_CASTLE_INDEX[0], BLACK_QSIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 1
+        self.board[WHITE_K_SIDE_CASTLE_INDEX[0], WHITE_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 1
+        self.board[WHITE_Q_SIDE_CASTLE_INDEX[0], WHITE_Q_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 1
+        self.board[BLACK_K_SIDE_CASTLE_INDEX[0], BLACK_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 1
+        self.board[BLACK_Q_SIDE_CASTLE_INDEX[0], BLACK_Q_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 1
         # Then do material, will be updated on the fly. Promotions will be handed.
         self.board[MATERIAL_DIFFERENCE_INDEX[0], MATERIAL_DIFFERENCE_INDEX[1], HEURESTICS_LAYER] = 0 # start even
         self.board[WHITE_TOTAL_MATERIAL_INDEX[0], WHITE_TOTAL_MATERIAL_INDEX[1], HEURESTICS_LAYER] = 45 # just the sum
@@ -163,9 +163,9 @@ class Board:
         '''
         return tf.constant(self.board, dtype=tf.float32)
 
-    def play_move(self, move, promotion):
+    def play_move(self, move):
         '''
-        (pychess "Move", pychess "ChessPiece") -> None
+        (pychess "Move") -> None
 
         Updates the board given coordinates for a move, promotes if necessary.
         '''
@@ -189,12 +189,10 @@ class Board:
             self.set_black_no_castle("K")
         if piece == "R" and start_index == Board.parse_index("a8"):
             self.set_black_no_castle("Q")
-        # next, empty the index from the start index
-        self.empty_index(start_index[0], start_index[1])
         # then, update the target index
-        if promotion != None:
+        if move.promotion != None:
             # Then get the promotion piece
-            py_chess_piece_type = promotion
+            py_chess_piece_type = move.promotion
             piece = PYCHESS_PIECE_TYPE_TO_BOARD_PIECE_TYPE[py_chess_piece_type]
             upgrade_result = MATERIAL_VALUE[piece] - MATERIAL_VALUE['p']
             if self.get_turn() == WHITES_TURN:
@@ -211,6 +209,8 @@ class Board:
                 # then take it to uppercase for updating correcting
                 piece = piece.upper()
         self.update_index(target_index[0], target_index[1], piece)
+        # now it's safe to remove the old index
+        self.empty_index(start_index[0], start_index[1])
         # then push the move onto  the board
         self.pychess_board.push(move)
         # update the attack indices
@@ -270,7 +270,7 @@ class Board:
             self.board[row, col, layer] = BLACK_PRESENT
 
 
-    def castle_king_side(self, colour):
+    def castle_king_side(self, colour,move):
         '''
         Castles kingside given a colour. Returns None on failure
         TODO: Proper exception, optimize if else branching
@@ -291,10 +291,10 @@ class Board:
             rook_target = Board.parse_index('f8')
             king_char = 'K'
             rook_char = 'R'
-        self.castling_logic(king_index, rook_index, king_target, rook_target, king_char, rook_char)
+        self.castling_logic(king_index, rook_index, king_target, rook_target, king_char, rook_char,move)
         
 
-    def castle_queen_side(self, colour):
+    def castle_queen_side(self, colour,move):
         '''
         Castles queenside according to colour
         '''
@@ -312,9 +312,9 @@ class Board:
             rook_target = Board.parse_index('d8')
             king_char = 'K'
             rook_char = 'R'
-        self.castling_logic(king_index, rook_index, king_target, rook_target, king_char, rook_char)
+        self.castling_logic(king_index, rook_index, king_target, rook_target, king_char, rook_char, move)
 
-    def castling_logic(self, king_index, rook_index, king_target, rook_target, king_char, rook_char):
+    def castling_logic(self, king_index, rook_index, king_target, rook_target, king_char, rook_char, move):
         '''
         Castling logic that will be called on all castles: white/black kingside, white/black queenside.
         '''
@@ -335,7 +335,9 @@ class Board:
             self.set_white_no_castle("A")
         else:
             self.set_black_no_castle("A")
-        # conclude by updating the turn
+        # conclude by updating the turn, pushing onto the pychess board, and updating attack layers
+        self.pychess_board.push(move)
+        self.attack_layer_setup()
         self.update_turn()
 
     def update_turn(self):
@@ -348,15 +350,15 @@ class Board:
     def get_turn(self):
         return self.board[TURN_INDEX[0],TURN_INDEX[1], HEURESTICS_LAYER]
 
-    def white_can_castle(self, side):
+    def white_can_castle(self, side, move):
         """
         (char) -> None
 
         A for either side
         K for kingside, Q for Q side
         """
-        kside = self.board[WHITE_KSIDE_CASTLE_INDEX[0], WHITE_KSIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] == 1
-        qside = self.board[ WHITE_QSIDE_CASTLE_INDEX[0], WHITE_QSIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] == 1
+        kside = self.board[WHITE_K_SIDE_CASTLE_INDEX[0], WHITE_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] == 1
+        qside = self.board[WHITE_Q_SIDE_CASTLE_INDEX[0], WHITE_Q_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] == 1
         if side == "A":
             return kside or qside
         if side == "K":
@@ -373,12 +375,12 @@ class Board:
         Q: for no queenside
         """
         if type == "A":
-            self.board[WHITE_KSIDE_CASTLE_INDEX[0], WHITE_KSIDE_CASTLE_INDEX[1], HEURISTICS_LAYER] = 0
-            self.board[WHITE_KSIDE_CASTLE_INDEX[0], WHITE_KSIDE_CASTLE_INDEX[1], HEURISTICS_LAYER] = 0
+            self.board[WHITE_K_SIDE_CASTLE_INDEX[0], WHITE_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
+            self.board[WHITE_Q_SIDE_CASTLE_INDEX[0], WHITE_Q_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
         elif type == "K":
-                self.board[WHITE_KSIDE_CASTLE_INDEX[0], WHITE_KSIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0 # set the white kside to 0
+                self.board[WHITE_K_SIDE_CASTLE_INDEX[0], WHITE_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0 # set the white kside to 0
         else:
-            self.board[WHITE_KSIDE_CASTLE_INDEX[0],WHITE_KSIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
+            self.board[WHITE_Q_SIDE_CASTLE_INDEX[0],WHITE_Q_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
 
     def black_can_castle(self, side):
         """
@@ -387,8 +389,8 @@ class Board:
         A for either side
         K for kingside, Q for Q side
         """
-        kside = self.board[BLACK_KSIDE_CASTLE_INDEX[0], BLACK_KSIDE_CASTLE_INDEX[1], HEURISTICS_LAYER] == 1
-        qside = self.board[BLACK_QSIDE_CASTLE_INDEX[0], BLACK_QSIDE_CASTLE_INDEX[1], HEURISTICS_LAYER] == 1
+        kside = self.board[BLACK_K_SIDE_CASTLE_INDEX[0], BLACK_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] == 1
+        qside = self.board[BLACK_Q_SIDE_CASTLE_INDEX[0], BLACK_Q_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] == 1
         if side == "A":
             return kside or qside
         if side == "K":
@@ -403,12 +405,12 @@ class Board:
         Q: for no queenside
         """
         if type == "A":
-            self.board[BLACK_KSIDE_CASTLE_INDEX[0], BLACK_KSIDE_CASTLE_INDEX[1], HEURISTICS_LAYER] = 0
-            self.board[BLACK_KSIDE_CASTLE_INDEX[0], BLACK_KSIDE_CASTLE_INDEX[1], HEURISTICS_LAYER] = 0
+            self.board[BLACK_K_SIDE_CASTLE_INDEX[0], BLACK_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
+            self.board[BLACK_K_SIDE_CASTLE_INDEX[0], BLACK_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
         elif type == "K":
-                self.board[BLACK_KSIDE_CASTLE_INDEX[0], BLACK_KSIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0 # set the white kside to 0
+                self.board[BLACK_K_SIDE_CASTLE_INDEX[0], BLACK_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0 # set the white kside to 0
         else:
-            self.board[BLACK_KSIDE_CASTLE_INDEX[0],BLACK_KSIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
+            self.board[BLACK_K_SIDE_CASTLE_INDEX[0],BLACK_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
     
     def update_material_difference(self, amount):
         """
@@ -493,8 +495,3 @@ class Board:
         row = pychess_sq >> 3
         col = pychess_sq & 7
         return (row, col)
-
-board = Board()
-move = chess.Move.from_uci("e2e4")
-board.play_move(move, None)
-print(board.board[:,:,WHITE_ATTACK_LAYER])

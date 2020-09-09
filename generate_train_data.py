@@ -16,9 +16,9 @@ import pickle
 # Want to do this in two ways: 
 
 # 1. By pgn of a game that was played
-def generate_train_data_from_PGN(pgn, out_file_path, limit):
+def generate_train_data_from_PGN(pgn, out_file_path, limit, skip = 0):
     """
-    (file, str) -> None
+    (file, str, int, int -> None
 
     'pgn' is a file containing a PGN
     'out_file' will be used for pickling data to the training out file. Will be appended to existing data
@@ -32,25 +32,28 @@ def generate_train_data_from_PGN(pgn, out_file_path, limit):
     train_list = []
     game_num = 0
     # Get the game from pgn
+    fail_count = 0
     game = chess.pgn.read_game(pgn)
     while game != None and game_num < limit:
         # Generate the tensorboard and py boards
         np_board =  Board.Board()
-        py_board = chess.Board()
         for move in game.mainline_moves():
             # update the np board
             Game.play_move_on_np_board(np_board, move)
-            # update the py board
-            py_board.push(move)
-            score =  engine.analyse(py_board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
-            numerical_score = get_numerical_score(score)
+            numerical_score = None
+            try:
+                score =  engine.analyse(np_board.pychess_board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
+                numerical_score = get_numerical_score(score)
+            except:
+                fail_count += 1 # weird UCI bug, not sure it's on my end
+                break
             # Now generate the training pair
             if numerical_score == None:
-                # then skip the rest of the game, because we reached a mating net
-                break
-            train_list.append((np_board.board, numerical_score)) # Good, training data produced
+                break # then stop because of mating net
+            else:
+                train_list.append((np_board.board, numerical_score)) # Good, training data produced
         game = chess.pgn.read_game(pgn)
-        print("finished game", game_num)
+        print("finished game", game_num, "; total failures:", fail_count)
         game_num += 1
     store_training_data(train_list, out_file_path)
     print("finished writing")
@@ -114,6 +117,7 @@ ANALYSIS_TIME = 0.1 # in seconds
 path = "C:/Users/Ethan/Documents/GitHub/monty/stockfish/stockfish-11-win/stockfish-11-win/Windows/stockfish_20011801_x64"
 
 engine = chess.engine.SimpleEngine.popen_uci(path)
+engine.options['Ponder'] = False
 
 out_file_path = "C:/Users/Ethan/Documents/GitHub/monty/training_out_file"
 
@@ -121,10 +125,12 @@ train_path_tal = "C:/Users/Ethan/Documents/GitHub/monty/Tal.pgn"
 
 train_path_carlsen = "C:/Users/Ethan/Documents/GitHub/monty/Carlsen.pgn"
 
+new_data_out_file_path = "C:/Users/Ethan/Documents/GitHub/monty/new_data_out_file.txt"
+
 
 if __name__ == "__main__":
     #erase_train_data(out_file_path) # erasing isn't the end of the world since i have the first 1000 tal games saved, but still avoid.
-    carlsen_file = open(train_path_carlsen)
+    tal_file = open(train_path_tal)
     arb_lim = 10000
-    generate_train_data_from_PGN(carlsen_file, out_file_path, arb_lim)
+    generate_train_data_from_PGN(tal_file, new_data_out_file_path, limit=arb_lim)
     print("generated")
