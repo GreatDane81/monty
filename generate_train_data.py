@@ -133,19 +133,17 @@ path = "C:/Users/Ethan/Documents/GitHub/monty/lc0-v0.26.1-windows-gpu-nvidia-cud
 engine = chess.engine.SimpleEngine.popen_uci(path)
 engine.options['Ponder'] = False
 
-out_file_path = "C:/Users/Ethan/Documents/GitHub/monty/training_out_file"
-
 train_path_tal = "C:/Users/Ethan/Documents/GitHub/monty/Tal.pgn"
-
 train_path_carlsen = "C:/Users/Ethan/Documents/GitHub/monty/Carlsen.pgn"
 
-new_data_out_file_path = "C:/Users/Ethan/Documents/GitHub/monty/new_data_out_file.txt"
-test_file_out_path = "C:/Users/Ethan/Documents/GitHub/monty/test_file_out_path.txt"
+out_file_path ="C:/Users/Ethan/Documents/GitHub/monty/new_outfile.txt"
+
 
 
 if __name__ == "__main__":
     #erase_train_data(out_file_path) # erasing isn't the end of the world since i have the first 1000 tal games saved, but still avoid.
     tal_file = open(train_path_tal)
+    carlsen_file = open(train_path_carlsen)
     arb_lim = 10000
-    generate_train_data_from_PGN(tal_file, "C:/Users/Ethan/Documents/GitHub/monty/test_file_out_path.txt", limit=arb_lim)
+    generate_train_data_from_PGN(carlsen_file, out_file_path, limit=arb_lim)
     print("generated")

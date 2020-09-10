@@ -6,6 +6,9 @@ import chess
 from chess.engine import Cp, Mate, MateGiven
 import chess.pgn
 
+# for storage of last boards
+import copy
+
 ROWS = 8
 COLUMNS = 8
 LAYERS = 9 # 9: 6 for piece structure (one layer for each peice, 1/-1 for black/white), 2 for SQUARES_ATTACKED and HEURESTICS
@@ -79,6 +82,9 @@ class Board:
         self.attack_layer_setup()
         # set up heurestics layer
         self.heurestics_setup()
+        # set up stuff for popping
+        self.last_board = self.board
+        self.last_pychess_board = self.pychess_board
 
     def pieces_setup(self, pieces_to_index):
         """
@@ -169,6 +175,10 @@ class Board:
 
         Updates the board given coordinates for a move, promotes if necessary.
         '''
+        # start by storing the old board
+        # And update the last boards
+        self.last_board = copy.deepcopy(self.board)
+        self.last_pychess_board = copy.deepcopy(self.pychess_board)
         # start by getting indices
         move_str = str(move)
         indices = Board.parse_move_indices(move_str)
@@ -176,6 +186,8 @@ class Board:
         target_index = indices[1]
         # get the piece from the start index
         piece = Board.get_piece_from_index(self.board, start_index[0], start_index[1])
+        if piece is None:
+            raise Exception("Tried to move an empty square as a piece", str(move))
         # check if the king is being moved. If yes, remove appropriate castle rights
         if piece == "k":
             self.set_white_no_castle("A") # redundant sometimes, but i think safety is key here
@@ -213,11 +225,26 @@ class Board:
         self.empty_index(start_index[0], start_index[1])
         # then push the move onto  the board
         self.pychess_board.push(move)
-        # update the attack indices
+        # update the attack layer
         self.attack_layer_setup()
         # And switch player turns
         self.update_turn()
+        
 
+    def pop(self):
+        """
+        Pops the last move just played. Only to be used in ai_experiment, and in one line.
+    
+        Don't call this.
+
+        Question: could I make this stable using a list? Probably, maybe worth a shot.
+        """
+        # Need to restore:
+        # tensor & board
+        self.board = self.last_board
+        self.pychess_board = self.last_pychess_board
+        self.last_board = None # for error checking
+        self.last_pychess_board = None
 
     def empty_index(self, row, col):
         '''
@@ -318,12 +345,15 @@ class Board:
         '''
         Castling logic that will be called on all castles: white/black kingside, white/black queenside.
         '''
+        # And update the last boards
+        self.last_board = copy.deepcopy(self.board)
+        self.last_pychess_board = copy.deepcopy(self.pychess_board)
         king_correct = Board.get_piece_from_index(self.board, king_index[0], king_index[1]) == king_char
         if not king_correct:
-            return None # TODO: fail out
+            raise Exception("King not correctly placed while attempting to castle")
         rook_correct = Board.get_piece_from_index(self.board, rook_index[0], rook_index[1]) == rook_char
         if not rook_correct:
-            return None
+            return Exception("Rook not correctly while attempting to castle")
         # Passed error handling, update the pieces
         self.empty_index(king_index[0], king_index[1])
         self.empty_index(rook_index[0], rook_index[1])
@@ -339,6 +369,7 @@ class Board:
         self.pychess_board.push(move)
         self.attack_layer_setup()
         self.update_turn()
+        
 
     def update_turn(self):
         """
@@ -366,7 +397,7 @@ class Board:
         else:
             return qside 
     
-    def set_white_no_castle(self, type):
+    def set_white_no_castle(self, side):
         """
         (char) -> None
 
@@ -374,10 +405,10 @@ class Board:
         K: for no kingside
         Q: for no queenside
         """
-        if type == "A":
+        if side == "A":
             self.board[WHITE_K_SIDE_CASTLE_INDEX[0], WHITE_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
             self.board[WHITE_Q_SIDE_CASTLE_INDEX[0], WHITE_Q_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
-        elif type == "K":
+        elif side == "K":
                 self.board[WHITE_K_SIDE_CASTLE_INDEX[0], WHITE_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0 # set the white kside to 0
         else:
             self.board[WHITE_Q_SIDE_CASTLE_INDEX[0],WHITE_Q_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
@@ -404,13 +435,13 @@ class Board:
         K: for no kingside
         Q: for no queenside
         """
-        if type == "A":
+        if side == "A":
             self.board[BLACK_K_SIDE_CASTLE_INDEX[0], BLACK_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
-            self.board[BLACK_K_SIDE_CASTLE_INDEX[0], BLACK_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
-        elif type == "K":
+            self.board[BLACK_Q_SIDE_CASTLE_INDEX[0], BLACK_Q_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
+        elif side == "K":
                 self.board[BLACK_K_SIDE_CASTLE_INDEX[0], BLACK_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0 # set the white kside to 0
-        else:
-            self.board[BLACK_K_SIDE_CASTLE_INDEX[0],BLACK_K_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
+        else: # side = Q
+            self.board[BLACK_Q_SIDE_CASTLE_INDEX[0],BLACK_Q_SIDE_CASTLE_INDEX[1], HEURESTICS_LAYER] = 0
     
     def update_material_difference(self, amount):
         """

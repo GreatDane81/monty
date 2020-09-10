@@ -11,14 +11,18 @@ import copy
 import chess.engine
 from chess.engine import Cp, Mate, MateGiven
 
+from tensorflow import keras
+
+
+
 
 SF_DEPTH = 10 # depth for stockfish
 
 ANALYSIS_TIME = 0.1 # in seconds
 
-path = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/stockfish/stockfish-11-win/stockfish-11-win/Windows/stockfish_20011801_x64.exe"
+#path = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/stockfish/stockfish-11-win/stockfish-11-win/Windows/stockfish_20011801_x64.exe"
 
-engine = chess.engine.SimpleEngine.popen_uci(path)
+engine = keras.models.load_model('conv_model.h5')
 
 class MoveNode:
 
@@ -26,7 +30,9 @@ class MoveNode:
         '''
         Must be python chess board for 'legal moves' functionality + evaluation
         '''
-        self.board = board
+        self.my_board = board
+        self.game_board = board.pychess_board
+        #print(self.game_board)
         self.move = move # The move represented by this node
         self.children = [] # list for easy traversal. This will be a list of MoveNodes
         self.player = player # 0 for white, 1 for black
@@ -40,13 +46,19 @@ class MoveNode:
         '''
         if depth == 0:
             return # no tree to build, just return the move
-        for move in self.board.legal_moves:
+        for move in self.game_board.legal_moves:
             # create a new board and push... ugh the memory this might get ugly.
-            self.board.push(move)
-            new_board = copy.deepcopy(self.board) # oh boy, this is really not good
+            #print("before playing the move:")
+            #print(self.my_board)
+            self.my_board.play_move(move)
+            new_board = copy.deepcopy(self.my_board) # oh boy, this is really not good
+            #print("the board that was copied")
+            #print(new_board)
             #print(new_board)
             #print("\n\n")
-            self.board.pop() # man this will get real bad for memory, not even sure this is viable
+            self.my_board.pop() # man this will get real bad for memory, not even sure this is viable
+            #print("The board that was restored after pop:")
+            #print(self.my_board)
             new_node = MoveNode(new_board, player = 1 - self.player, depth = depth - 1, move = move)
             self.children.append(new_node)
     
@@ -80,7 +92,11 @@ class MoveSelector:
         # Either the "root" is a leaf, i.e depth = 0
         if root.depth == 0:
             # Here there is no decision to make, just return the move and the engine's evaluation
-            score =  engine.analyse(root.board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
+            #score =  engine.analyse(root.board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
+            root_board = root.my_board # but since this is my object,
+            tensor_board = root_board.board
+            score = engine.predict(np.array([tensor_board,]))
+            #print(root_board)
             return (score, root)
         else:
             # The "root" is somewhere else in the tree, in which case it will choose the best child.
@@ -101,10 +117,7 @@ class MoveSelector:
         '''
         Returns True if and only if 'first' is a score better for 'player' than 'second' is
         '''
-        if player == 0:
-            return first.white() > second.white()
-        else:
-            return first.black() > second.black()
+        return first > second
 
 # Ok, so figured out how to generate legal moves from any given position
 #for move in first_game.mainline_moves():
