@@ -130,8 +130,10 @@ class Board:
             attack_set = self.pychess_board.attacks(square)
             if self.pychess_board.color_at(square) == chess.WHITE:
                 layer = WHITE_ATTACK_LAYER
+                increment = 1 # add one
             elif self.pychess_board.color_at(square) == chess.BLACK:
                 layer = BLACK_ATTACK_LAYER
+                increment = -1 # subtract one
             else:
                 layer = None
             if layer != None:
@@ -140,7 +142,7 @@ class Board:
                     # get the index (row, col)
                     my_index = Board.pychess_sq_to_my_sq(attacked_sq)
                     # and increment the right counter
-                    self.board[my_index[0], my_index[1], layer] += 1
+                    self.board[my_index[0], my_index[1], layer] += increment
 
 
     def __str__(self):

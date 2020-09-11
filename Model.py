@@ -53,7 +53,7 @@ conv_model.add(Conv2D(128, kernel_size=3, activation='relu'))
 conv_model.add(Flatten())
 conv_model.add(Dense(1))
 
-optimizer = keras.optimizers.Adam(lr=0.0001)
+optimizer = keras.optimizers.Adam()
 
 conv_model.compile(optimizer=optimizer,loss='mae')  # maybe the idea should be use functions that identify "average case" which are by far
 # more common that outlier "totally winning" situations to fit?
@@ -62,15 +62,19 @@ print("compiled successfully")
 
 
 # getting the training data
-out_file_path = out_file_path ="C:/Users/Ethan/Documents/GitHub/monty/new_outfile.txt"
+out_file_path = "C:/Users/Ethan/Documents/GitHub/monty/new_outfile.txt"
+debug_outfile_path = "C:/Users/Ethan/Documents/GitHub/monty/debug_outfile.txt"
 train_list = generate_train_data.load_training_data(out_file_path)
 print("train list length: ", len(train_list))
-#print(example)
+#print(type(train_list))
 
+# thinking I need to rewrite the generation of train data.
+
+#print(train_list[0][0], train_list[0][1])
 # going to try sorting by scores, and select data by each quintile in equal proportions
 
-sorted_train_list = sorted(train_list,key=itemgetter(1))
-print(sorted_train_list[0][1]) # nice ok, so now everything is sorted.
+sorted_train_list = sorted(train_list, key=itemgetter(1))
+#print(sorted_train_list[0][1]) # nice ok, so now everything is sorted.
 # might want to do this by absolute value, just so "big scores" are stored.
 
 sorted_positions = []
@@ -129,7 +133,7 @@ vs = 0.2
 
 history = conv_model.fit(training_positions,
                         training_scores,
-                        epochs=1000,
+                        epochs=10,
                         batch_size=32,
                         validation_split=vs,
                         shuffle=True,

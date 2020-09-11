@@ -7,6 +7,7 @@ from chess.engine import Cp, Mate, MateGiven
 import chess.pgn
 
 import pickle
+import os
 # recall the idea here was:
 # - Start the game in an initial state
 # - run through the game, and for each move get stockfish's evaluation
@@ -28,21 +29,23 @@ def generate_train_data_from_PGN(pgn, out_file_path, limit, skip = 0):
     
     The file that will be serialized will contain one object: a list of every training pair
     """
+    # start by unpicking any existing data to keep elements all in the same file
+    out_file = open(out_file_path, "rb")
+    try:
+        train_list = pickle.load(out_file)
+    except EOFError as e:
+        train_list = []
     # Start by creating the object that will be pickled
-    train_list = []
     game_num = 0
     # Get the game from pgn
     fail_count = 0
     positions_count = 0
-    board_differential_count = 0
     game = chess.pgn.read_game(pgn)
-    game_num += 1
     while game != None and game_num < limit:
         #print(game.headers["White"])
         #print(game.headers["Black"])
         #print(game.headers["Site"])
         #print(game.headers["Date"])
-        vanilla_board = chess.Board()
         positions_count = 0
         # Generate the tensorboard and py boards
         np_board =  Board.Board()
@@ -51,9 +54,6 @@ def generate_train_data_from_PGN(pgn, out_file_path, limit, skip = 0):
             Game.play_move_on_np_board(np_board, move)
             #print(move)
             #print(np_board)
-            vanilla_board.push(move)
-            if vanilla_board != np_board.pychess_board:
-                board_differential_count += 1
             #print("boards are the same:", vanilla_board == np_board.pychess_board)
             try:
                 score =  engine.analyse(np_board.pychess_board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
@@ -67,26 +67,20 @@ def generate_train_data_from_PGN(pgn, out_file_path, limit, skip = 0):
                 fail_count += 1
                 break # skip the rest of the game
         game = chess.pgn.read_game(pgn)
-        print("finished game", game_num, "; positions from game; ", positions_count, "; fails;", fail_count, "; board ineqs;", board_differential_count)
+        print("finished game", game_num, "; positions from game; ", positions_count, "; fails;", fail_count)
         game_num += 1
     store_training_data(train_list, out_file_path)
     print("finished writing, total positions evaluated:", len(train_list))
 
-def generate_balanced_data(pgn, out_file_path, limit):
-    '''
-    Same Idea as before, but here the probability of a score being added to the training list
-    will depend on how "average" it is.
 
-    To encourage a balanced data set, the more outlying a score is, the more likely is to be included.
-
-    This was computed given the pandas functionality from Model.py
-    '''
 
 def store_training_data(train_list, out_file_path):
     """
     [] of (board, score) to be pickled in outfile
+
+    Writes over the train data to avoid having multiple lists
     """
-    out_file = open(out_file_path, "ab")
+    out_file = open(out_file_path, "wb") # should be write? No?
     pickle.dump(train_list, out_file)
     out_file.close()
 
@@ -96,6 +90,10 @@ def load_training_data(out_file_path):
     """
     out_file = open(out_file_path, "rb")
     train_list = pickle.load(out_file)
+    #train_list_2 = pickle.load(out_file)
+    print("length of list loaded: ", len(train_list))
+    file_stats = os.stat(out_file_path)
+    print("file size in mb:", file_stats.st_size / (1024*1024))
     out_file.close()
     return train_list
 
@@ -104,6 +102,7 @@ def erase_train_data(out_file_path):
     WARNING: erases all the data in the file in 'out_file_path'
     """
     out_file = open(out_file_path, 'w').close()
+    print("ERASED TRAIN DATA IN: ", out_file_path)
 
 
 def get_numerical_score(score):
@@ -135,15 +134,27 @@ engine.options['Ponder'] = False
 
 train_path_tal = "C:/Users/Ethan/Documents/GitHub/monty/Tal.pgn"
 train_path_carlsen = "C:/Users/Ethan/Documents/GitHub/monty/Carlsen.pgn"
+train_path_ivanchuk = "C:/Users/Ethan/Documents/GitHub/monty/Ivanchuk.pgn"
+train_path_nakamura = "C:/Users/Ethan/Documents/GitHub/monty/Nakamura.pgn"
+train_path_kasparov = "C:/Users/Ethan/Documents/GitHub/monty/Kasparov.pgn"
 
 out_file_path ="C:/Users/Ethan/Documents/GitHub/monty/new_outfile.txt"
 
+debug_outfile_path = "C:/Users/Ethan/Documents/GitHub/monty/debug_outfile.txt"
 
 
 if __name__ == "__main__":
-    #erase_train_data(out_file_path) # erasing isn't the end of the world since i have the first 1000 tal games saved, but still avoid.
     tal_file = open(train_path_tal)
     carlsen_file = open(train_path_carlsen)
+    ivanchuk_file = open(train_path_ivanchuk)
+    nakamura_file = open(train_path_nakamura)
+    kasparov_file = open(train_path_kasparov)
     arb_lim = 10000
-    generate_train_data_from_PGN(carlsen_file, out_file_path, limit=arb_lim)
+    # COMMENT INDICATES TRAINING COMPLETED
+    #erase_train_data(out_file_path)
+    #generate_train_data_from_PGN(tal_file, out_file_path, limit= arb_lim)
+    #generate_train_data_from_PGN(carlsen_file, out_file_path, limit= arb_lim)
+    #generate_train_data_from_PGN(ivanchuk_file, out_file_path, limit= arb_lim)
+    generate_train_data_from_PGN(nakamura_file, out_file_path, limit=arb_lim)
+    generate_train_data_from_PGN(kasparov_file, out_file_path, limit=arb_lim)
     print("generated")
