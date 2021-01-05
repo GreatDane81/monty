@@ -2,27 +2,44 @@
 
 ## An ML chess AI using Keras
 
-ML will be used to learn Stockfish's evaluation of positions.  
-This will be used alongside the "Min/Max" chess decision algorithm to make moves.
+A Keras and Tensorflow Convolutional Neural Netowork (CNN) will be used to learn Stockfish's evaluation of positions.  
+Then, all legal moves will be analyzed, and the move with the best score for the player moving will be played.
+
+## Configuration
+
+* Tensorflow - Version 2.1.0
+* CUDA - Version 10.1
+* CUDN - Version 7.6.5
+
+This configuration is picky, and must be built following the appropriate Tensorflow and NVIDIA guidelines.
 
 ## TODO:
 
 Since Keras only accepts `Tensors` of fixed size, a `Tensor` representing a chess position will be  
-a one-hotted matrix of size:    
-  
-* 9x8x12  
-	* Where 8x8 is used to to represent each square on the board  
-	* One row, will be used to represent whose turn it is, will be filled 0's except for the leading bit  (0 for white's turn, 1 for black's)
-	* Each of the 8x8 squares will have 1 if they have contain a piece. If they contain a piece, they will be one-hotted on the piece which   
-	  occupies the square (white/black: king, queen, rook, bishop, knight, pawn)
+a one-hotted.
+
+I've experimented a lot with different representations of data without training. My goal is to generate good data that will
+converge quickly.
+
+Here are my findings so far:
+
+* Sparse data with lots of 0's does not perform well. 
+* Ambiguous data (i.e. encoding how many times a square is attacked, but not which pieces attack it) does not perform well
+* Adding linearly separable data that affects Stockfish's evaluation (material advantage, number of pieces on the board) improves convergence
+* Testing with smaller data sets to see an initial convergence rate helps you judge the strength of a data representation
+    
+
+## Data Generation Life Cycle:  
   
 I plan on using PGN to parse games and generate evaluation data  
-using Stockfish. The game itself will be played in Python Chess.  
+using Stockfish. The game itself will be played in Python Chess.
 
-Data Generation Life Cycle:  
-  
-1. Download a PGN from an external source.  
-2. Create a `Tensor` to represent the initial state of the board.
-3. Play white's first move, and evaluate the position using Stockfish.  
-4. Store the resulting `Tensor` alongside Stockfish's evaluation for the position in a database for training data.  
-5. Iterate until the game is complete. 
+1. Download a Portable Game Notation (PGN) file from an external source.  
+2. For each game in the file:
+3. Convert each position to the corresponding Tensor
+4. Compute the position's score according to an established chess engine (Stockfish in this case)
+5. Store the position in a tuple of (tensor, Stockfish score) in an output file
+
+## Training:
+
+Then simply train on the data stored in the output file.
