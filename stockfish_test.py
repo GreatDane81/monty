@@ -2,7 +2,7 @@ import chess
 import chess.engine
 
 
-path = "C:/Users/Ethan Dain/Desktop/University/Machine Learning/Code/monty/stockfish/stockfish-11-win/stockfish-11-win/Windows/stockfish_20011801_x64.exe"
+path = "C:/Users/ethan/Desktop/post-university/code/monty/stockfish/stockfish-11-win/stockfish-11-win/Windows/stockfish_20011801_x64.exe"
 
 
 engine = chess.engine.SimpleEngine.popen_uci(path)

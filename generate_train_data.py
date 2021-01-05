@@ -1,9 +1,5 @@
 import Board # had to change python.linting.pylintEnable to false in settings.
 # weird, looks like a pyLint thing.
-from Game import Game
-
-import TwoDBoard
-from GameTwoD import GameTwoD
 
 import chess
 from chess.engine import Cp, Mate, MateGiven
@@ -38,20 +34,14 @@ def generate_train_data_from_PGN(pgn, out_file_path, limit):
     game = chess.pgn.read_game(pgn)
     while game != None and game_num < limit:
         # Generate the tensorboard and py boards
-        np_board =  TwoDBoard.TwoDBoard() # TODO: this line changes when changing data type
         py_board = chess.Board()
         for move in game.mainline_moves():
-            # update the np board
-            GameTwoD.play_move_on_np_board(np_board, move)
             # update the py board
             py_board.push(move) # TODO: this line changes when changing data type
+            tensor_board = BoardTensor.board_to_tensor(py_board)
             score =  engine.analyse(py_board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
             numerical_score = get_numerical_score(score)
-            # Now generate the training pair
-            if numerical_score == None:
-                # then skip the rest of the game, because we reached a mating net
-                break
-            train_list.append((np_board.board, numerical_score)) # Good, training data produced
+            train_list.append((tensor_board, numerical_score)) # Good, training data produced
         game = chess.pgn.read_game(pgn)
         print("finished game", game_num)
         game_num += 1
@@ -98,6 +88,7 @@ def get_numerical_score(score):
 
     If mate() or mate_given(), return a signal to skip terminate the game
     """
+    # TODO: Check one of the branches for the latest version of this
     # since white is positive, will be negative if black is leading, so
     if score.is_mate():
         return None
@@ -107,7 +98,6 @@ def get_numerical_score(score):
 
 # 2. By using running move by move what stockfish would pick (no need for me to create my own tree stuff)
 #    just use the one level "for move in move, take best move" code. Need to write it haha
-
 
 
 SF_DEPTH = 10 # depth for stockfish
