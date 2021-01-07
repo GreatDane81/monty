@@ -175,9 +175,12 @@ def reduce(P):
 
 
 if __name__ == "__main__":
-    reset_seen_positions(paths.SEEN_POSITIONS_PATH)
-    morphy_file, morphy_limit = open(paths.PREFIX + "/Morphy.pgn"), training_limits.SIZES['Morphy'] 
-    generate_train_data_from_PGN(morphy_file, paths.OUTFILE_PATH, paths.SEEN_POSITIONS_PATH, 1)
-    print("generated")
+    #reset_seen_positions(paths.SEEN_POSITIONS_PATH)
+    #morphy_file, morphy_limit = open(paths.PREFIX + "/Morphy.pgn"), training_limits.SIZES['Morphy'] 
+    #generate_train_data_from_PGN(morphy_file, paths.OUTFILE_PATH, paths.SEEN_POSITIONS_PATH, 1)
+    #print("generated")
+    train_list = load_training_data(paths.OUTFILE_PATH)
+     # print(type(train_list[0][0].shape))
+    print(BoardTensor.print_tensor(train_list[0][0]))
     
 
