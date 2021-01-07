@@ -14,8 +14,6 @@ NUM_DIMS = 7 # Really this is 6 + 1 (6 for each type of piece, + 1 for heurestic
 WHITE_PRESENT = 1
 BLACK_PRESENT = -1
 
-
-
 # Turn bit location in the heuristics layer
 TURN_BIT_INDEX = (0,0)
 
@@ -52,8 +50,8 @@ def board_to_tensor(board):
     "heurestics" layer is independent of the rest of the layers.
         - at [0,0,6] the Turn bit resides. 1 for white, -1 for black. 
     """
-    # use the smallest datatype supported by keras
-    tensor = np.zeros([NUM_ROWS, NUM_COLS, NUM_DIMS], dtype='float16')
+    # use the smallest datatype supported by keras. Saw on SO to "TLDR keep it on float32   "
+    tensor = np.zeros([NUM_ROWS, NUM_COLS, NUM_DIMS], dtype='float32')
     # This function will be implemented by looping through each square of the given board and filling in
     # the requisite information
     for square in chess.SQUARES:
@@ -81,9 +79,9 @@ def board_to_tensor(board):
 
 def print_tensor(tensor):
     """
-    (8*8*7 NP Tensor) -> None
+    (8*8*7 NP Tensor) -> str
 
-    Prints the given NP tensor, for verification purposes.
+    returns the given NP tensor, for verification purposes.
 
     Lowercase represents white, uppercase represents black
     """
@@ -103,28 +101,19 @@ def print_tensor(tensor):
         # after each row print a new line
         s += "\n"
     # after all, print s
-    print(s)
+    return s
                      
-
-
 
 if __name__ == "__main__":
     # Some testing stuff to verify the conversion is working as intended
-    board = chess.Board()
-    board.push(chess.Move.from_uci("d2d4"))
-    x = board_to_tensor(board)
-    print_tensor(x)
-    board.push(chess.Move.from_uci("e7e5"))
-    x = board_to_tensor(board)
-    print_tensor(x)
-    board.push(chess.Move.from_uci("d4e5"))
-
-    x = board_to_tensor(board)
-    print_tensor(x)
-
-
-        
-
-
-
-
+    # board = chess.Board()
+    # board.push(chess.Move.from_uci("d2d4"))
+    # x = board_to_tensor(board)
+    # print_tensor(x)
+    # board.push(chess.Move.from_uci("e7e5"))
+    # x = board_to_tensor(board)
+    # print_tensor(x)
+    # board.push(chess.Move.from_uci("d4e5"))
+    # x = board_to_tensor(board)
+    # print_tensor(x)
+    pass
