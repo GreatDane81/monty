@@ -32,11 +32,18 @@ import pandas as pd
 # for data sorting
 from operator import itemgetter
 
+# The model architecture was copied from:
+# http://www.diva-portal.se/smash/get/diva2:1366229/FULLTEXT01.pdf
+#
+
 conv_model = Sequential()
-inp = keras.layers.Input(batch_input_shape=(None,9,8))# ok just assume 13 channels for now
+inp = keras.layers.Input(batch_input_shape=(None,8,8,7))# ok just assume 13 channels for now
 conv_model.add(inp)
-conv_model.add(Dense(128, activation='relu')) # TODO: the one here is usually for grayscale images, not sure how this will work with 1/0 bin
-conv_model.add(Dropout(rate=0.2))
+conv_model.add(Conv2D(8, kernel_size=3, activation='relu')) # TODO: the one here is usually for grayscale images, not sure how this will work with 1/0 bin
+conv_model.add(Conv2D(16, kernel_size=3, activation='relu')) # TODO: the one here is usually for grayscale images, not sure how this will work with 1/0 bin
+conv_model.add(Conv2D(32, kernel_size=3, activation='relu')) # TODO: the one here is usually for grayscale images, not sure how this will work with 1/0 bin
+conv_model.add(Conv2D(64, kernel_size=2, activation='relu')) # TODO: the one here is usually for grayscale images, not sure how this will work with 1/0 bin
+conv_model.add(Dense())
 conv_model.add(Flatten())
 conv_model.add(Dense(1))
 

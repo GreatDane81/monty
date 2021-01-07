@@ -4,8 +4,6 @@ SIZES = {'Tal':2431,
           'Morphy':211
         }
 
-# Of course a mate is "infinitely" better than a totally winning non-mate position,
-# but the model will expect some value to train with so I'm setting a constant +/- 20k
-# because analysis shows the top winning/losing scores are 15k.
-WHITE_MATE_SCORE = 20000
-BLACK_MATE_SCORE = -20000
+# These scores represent the probability of white winning.
+WHITE_MATE_SCORE = 1
+BLACK_MATE_SCORE = 0

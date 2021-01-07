@@ -12,6 +12,9 @@ import chess.pgn
 import numpy as np
 import pickle
 
+# for sigmoid
+import math
+
 
 # Engine configuration: 
 SF_DEPTH = 10 # depth for stockfish
@@ -39,7 +42,7 @@ def generate_train_data_from_PGN(pgn, out_file_path, seen_positions_path, limit)
     game = chess.pgn.read_game(pgn)
     while game != None and game_num < limit:
         # Generate the tensorboard and py boards
-        py_board = chess.Board()
+        py_board = chess.Board()    
         for move in game.mainline_moves():
             # update the py board
             py_board.push(move) # TODO: this line changes when changing data type
@@ -52,12 +55,14 @@ def generate_train_data_from_PGN(pgn, out_file_path, seen_positions_path, limit)
                 # we do need to analyze the position, so add it to the fen so it won't be analyzed again
                 seen_positions.add(fen)
             tensor_board = BoardTensor.board_to_tensor(py_board)
-            score =  engine.analyse(py_board, chess.engine.Limit(time=ANALYSIS_TIME))["score"]
+            score =  engine.analyse(py_board, chess.engine.Limit(time=ANALYSIS_TIME))["score"].relative
             # convert the score to something useable by the model
-            numerical_score = get_numerical_score(score)
+            numerical_score = get_numerical_score(score, py_board)
             # and append. Unfortunate that this is O(n)
             # TODO: Find a better way, hopefully this isn't too ugly
             train_list.append((tensor_board, numerical_score))
+            print(BoardTensor.print_tensor(tensor_board), numerical_score, score)
+            print("--------")
         # finish the game, so increase counter
         game = chess.pgn.read_game(pgn)
         print("finished game", game_num)
@@ -126,7 +131,7 @@ def reset_seen_positions(seen_positions_path):
     with open(seen_positions_path, 'wb') as f:
         pickle.dump(set(), f, pickle.HIGHEST_PROTOCOL)
 
-def get_numerical_score(score):
+def get_numerical_score(score, board):
     """
     (PovScore) --> +int if white leading, -int if black leading, 0 if even
 
@@ -135,8 +140,37 @@ def get_numerical_score(score):
     # TODO: Check one of the branches for the latest version of this
     # since white is positive, will be negative if black is leading, so
     if score.is_mate():
-        return None
-    return float(score.white().score())
+        # figure out which player is winning
+        if score.mate() < 0:
+            # white is getting mated
+            return training_limits.BLACK_MATE_SCORE
+        elif score.mate() > 0:
+            return training_limits.WHITE_MATE_SCORE
+        else:
+            # because of a quirk in the library, mate(0) conflates a win and a loss
+            # so  I need to find out on my own who won
+            if board.turn == chess.WHITE:
+                # then white got mated
+                return training_limits.BLACK_MATE_SCORE
+            else:
+                return training_limits.WHITE_MATE_SCORE
+    # otherwise we need to do sigmoid on the score
+    numerical_score = float(score.score()) 
+    numerical_score /= 100 # because it's in centipawn
+    return reduce(numerical_score)
+
+def reduce(P):
+    """
+    float -> (returns white win percentage)
+    Hopefully this is numerically sound.
+
+    Reduces the centipawn score to a more digestible training value.
+
+    Input must be in P, not centi P.
+    Source: https://www.chessprogramming.org/Pawn_Advantage,_Win_Percentage,_and_Elo
+    """
+    # seems odd but checkout the graph from above
+    return 1/ (1+math.pow(10, (-P/4)))
 
 
 
@@ -145,7 +179,5 @@ if __name__ == "__main__":
     morphy_file, morphy_limit = open(paths.PREFIX + "/Morphy.pgn"), training_limits.SIZES['Morphy'] 
     generate_train_data_from_PGN(morphy_file, paths.OUTFILE_PATH, paths.SEEN_POSITIONS_PATH, 1)
     print("generated")
-    x = load_training_data(paths.OUTFILE_PATH)
-    print(BoardTensor.print_tensor(x[0][0]), x[0][1])
-    print(len(x))
+    
 
